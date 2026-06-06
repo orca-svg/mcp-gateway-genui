@@ -1,6 +1,26 @@
 {
   "name": "@mcp-gen-ui/schema",
   "version": "0.1.0",
+  "description": "Zod schemas and JSON Schema exports for mcp-gen-ui gateway contracts.",
+  "license": "Apache-2.0",
+  "author": "Team KOI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orca-svg/mcp-gateway-genui.git",
+    "directory": "packages/schema"
+  },
+  "homepage": "https://github.com/orca-svg/mcp-gateway-genui#readme",
+  "bugs": {
+    "url": "https://github.com/orca-svg/mcp-gateway-genui/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "sideEffects": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,6 +31,7 @@
     }
   },
   "scripts": {
+    "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",

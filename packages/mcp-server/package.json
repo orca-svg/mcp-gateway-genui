@@ -1,6 +1,25 @@
 {
   "name": "@mcp-gen-ui/mcp-server",
   "version": "0.1.0",
+  "description": "stdio MCP server exposing mcp-gen-ui public-benefit discovery tools.",
+  "license": "Apache-2.0",
+  "author": "Team KOI",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/orca-svg/mcp-gateway-genui.git",
+    "directory": "packages/mcp-server"
+  },
+  "homepage": "https://github.com/orca-svg/mcp-gateway-genui#readme",
+  "bugs": {
+    "url": "https://github.com/orca-svg/mcp-gateway-genui/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "type": "module",
   "bin": {
     "mcp-gen-ui-gateway": "./dist/index.js"
@@ -14,6 +33,7 @@
     }
   },
   "scripts": {
+    "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
