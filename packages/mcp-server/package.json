@@ -1,0 +1,31 @@
+{
+  "name": "@mcp-gen-ui/mcp-server",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "mcp-gen-ui-gateway": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@mcp-gen-ui/core": "workspace:*",
+    "@mcp-gen-ui/schema": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "$ref": "#/definitions/ChangeLogResponse",
+  "definitions": {
+    "ChangeLogResponse": {
+      "type": "object",
+      "properties": {
+        "entityId": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "entityId": {
+                "type": "string"
+              },
+              "entityType": {
+                "type": "string",
+                "const": "benefit"
+              },
+              "changeType": {
+                "type": "string",
+                "enum": [
+                  "created",
+                  "updated",
+                  "unchanged"
+                ]
+              },
+              "summary": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "entityId",
+              "entityType",
+              "changeType",
+              "summary",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "entries"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

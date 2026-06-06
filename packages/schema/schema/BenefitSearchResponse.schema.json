@@ -1,0 +1,151 @@
+{
+  "$ref": "#/definitions/BenefitSearchResponse",
+  "definitions": {
+    "BenefitSearchResponse": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "object",
+          "properties": {
+            "region": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ageRange": {
+              "type": "string",
+              "enum": [
+                "teen",
+                "twenties",
+                "thirties",
+                "forties",
+                "fifties",
+                "sixties_plus"
+              ]
+            },
+            "studentStatus": {
+              "type": "string",
+              "enum": [
+                "student",
+                "not_student",
+                "unknown"
+              ],
+              "default": "unknown"
+            },
+            "employmentStatus": {
+              "type": "string",
+              "enum": [
+                "employed",
+                "self_employed",
+                "unemployed",
+                "unknown"
+              ],
+              "default": "unknown"
+            },
+            "householdType": {
+              "type": "string",
+              "enum": [
+                "single",
+                "couple",
+                "family",
+                "single_parent",
+                "unknown"
+              ],
+              "default": "unknown"
+            },
+            "interests": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "housing",
+                  "education",
+                  "employment",
+                  "health",
+                  "family",
+                  "youth",
+                  "local",
+                  "other"
+                ]
+              },
+              "default": []
+            }
+          },
+          "additionalProperties": false
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "provider": {
+                "type": "string",
+                "minLength": 1
+              },
+              "category": {
+                "$ref": "#/definitions/BenefitSearchResponse/properties/profile/properties/interests/items"
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "candidate",
+                  "needs_more_info",
+                  "not_applicable"
+                ]
+              },
+              "reasons": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              },
+              "missingInfo": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": []
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "provider",
+              "category",
+              "summary",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "query",
+        "profile",
+        "results",
+        "generatedAt"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -1,0 +1,18 @@
+mcp-gen-ui-gateway
+Copyright 2026 Junyeop Lee
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+------------------------------------------------------------------------------
+Attribution
+------------------------------------------------------------------------------
+
+This repository is a clean-room reimplementation and continued maintenance of a
+project originally created by Team KOI for the KOI competition:
+
+    Upstream specification: https://github.com/koi2026/mcp-gen-ui-gateway
+
+The original repository (Apache-2.0) was used only as a specification reference
+(PRD, JSON schema definitions, and recommended host prompts). This repository
+re-derives those contracts in independently written code. Thanks to the original
+KOI teammates for the design.

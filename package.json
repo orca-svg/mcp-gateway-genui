@@ -1,0 +1,25 @@
+{
+  "name": "mcp-gen-ui-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source MCP gateway for public-benefit discovery and Gen UI rendering.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @mcp-gen-ui/demo-ui dev",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "mcp": "pnpm --filter @mcp-gen-ui/mcp-server start",
+    "schemas": "pnpm --filter @mcp-gen-ui/schema export:schema"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
