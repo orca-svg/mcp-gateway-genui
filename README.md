@@ -101,6 +101,7 @@ See `docs/host-prompts.md` for the recommended host prompt and an example flow.
 
 - [`docs/prd.md`](docs/prd.md) — product spec and scope.
 - [`docs/host-prompts.md`](docs/host-prompts.md) — recommended host prompt + tools.
+- [`docs/extending.md`](docs/extending.md) — bring your own data source and other extension points.
 - [`docs/git-workflow.md`](docs/git-workflow.md) — branching and PR workflow.
 - [`docs/roadmap.md`](docs/roadmap.md) — G-1 scope and deferred work (incl. browser-assist).
 - [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
