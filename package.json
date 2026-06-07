@@ -18,6 +18,7 @@
     "schemas": "pnpm --filter @mcp-gen-ui/schema export:schema"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
