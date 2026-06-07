@@ -38,7 +38,13 @@ jobs:
       - name: Test
         run: pnpm test
 
+      # Go-live gate: versioning and publishing stay off until the maintainer
+      # is ready (npm org `mcp-gen-ui` created, NPM_TOKEN added, repo public).
+      # Flip on by setting the repository variable RELEASE_ENABLED=true. Until
+      # then this step is skipped so `main` stays green and nothing is published
+      # ahead of the human go-live step (issue #5). See docs/git-workflow.md.
       - name: Create release PR or publish to npm
+        if: ${{ vars.RELEASE_ENABLED == 'true' }}
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
