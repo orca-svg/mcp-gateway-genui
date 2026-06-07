@@ -11,6 +11,17 @@
 - [x] Fixture-backed Vite + React demo UI (domain JSON → A2UI adapter)
 - [x] Fixture-first test suite + CI (build → typecheck → test)
 
+## G-2 (OSS library readiness)
+
+- [x] Publishable package metadata for `@mcp-gen-ui/schema`,
+  `@mcp-gen-ui/core`, and `@mcp-gen-ui/mcp-server`.
+- [x] Document the public API surface for embedders, including stable core
+  extension points and example-only fixture data.
+- [x] Provide `docs/extending.md` and a custom `BenefitRepository` example for
+  bring-your-own-data-source integrations.
+- [x] Document the pre-1.0 semver policy: 0.x minor releases may break public
+  APIs, while patch releases should remain backward-compatible.
+
 ## Out of scope for G-1
 
 These are intentionally deferred (see `docs/prd.md` → Out of Scope):
