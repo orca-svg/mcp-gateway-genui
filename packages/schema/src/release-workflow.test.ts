@@ -39,4 +39,12 @@ describe('release automation configuration', () => {
     expect(workflow).toContain('pnpm typecheck');
     expect(workflow).toContain('pnpm test');
   });
+
+  it('gates publishing behind the RELEASE_ENABLED go-live switch', () => {
+    const workflow = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
+
+    // The publish/version step must not run until the maintainer flips the
+    // go-live switch, so nothing is published ahead of issue #5.
+    expect(workflow).toMatch(/if:\s*\$\{\{\s*vars\.RELEASE_ENABLED == 'true'\s*\}\}/);
+  });
 });
