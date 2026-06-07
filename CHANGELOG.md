@@ -8,6 +8,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- G-2 OSS-library readiness documentation:
+  - Root README Public API section covering the three published packages,
+    stable embedder contracts (`BenefitRepository`, `BenefitToolService`,
+    `SnapshotStore`, Zod/JSON Schema types), and example-only `fixtureBenefits`.
+  - Embed install snippet linking to `docs/extending.md`.
+  - Pre-1.0 semver policy noting that 0.x minor releases may include breaking
+    public API changes.
+  - Roadmap entry for the G-2 OSS-library milestone.
+
 - G-1 MVP clean-room reimplementation using the KOI project as a specification:
   - `@mcp-gen-ui/schema` — Zod source of truth + JSON Schema export.
   - `@mcp-gen-ui/core` — fixture repository, rule-based recommender, SQLite

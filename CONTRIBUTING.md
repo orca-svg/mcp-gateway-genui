@@ -39,6 +39,18 @@ docs/                PRD, host prompts, git workflow, roadmap
 - **No LLM in the server.** Orchestration belongs to the host.
 - **Respect the safety boundary** (see below) in every change.
 
+## Public API and versioning
+
+The supported embedder surface is documented in the root README's Public API
+section. Treat `BenefitRepository`, `BenefitToolService`, `SnapshotStore`, and
+the Zod/JSON Schema contracts as the stable API within a release line;
+`fixtureBenefits` is example data for tests and demos.
+
+This repository uses SemVer, but packages are currently `0.x`: minor releases may
+include breaking public API changes before 1.0. Keep patch releases
+backward-compatible, and document any breaking 0.x minor in `CHANGELOG.md` and
+the relevant README/docs.
+
 ## Safety boundary (public-benefit domain)
 
 Do not introduce:

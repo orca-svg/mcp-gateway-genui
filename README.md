@@ -44,6 +44,47 @@ Host (Claude / any MCP host)
 | `@mcp-gen-ui/mcp-server` | stdio MCP server registering the five tools. |
 | `@mcp-gen-ui/demo-ui` | Vite + React renderer; maps fixture domain JSON through an A2UI adapter. |
 
+## Public API
+
+The published npm surface is intentionally small so embedders can depend on the
+gateway without taking on the demo app or repository internals:
+
+| Package | Public contract |
+| --- | --- |
+| `@mcp-gen-ui/schema` | Zod schemas and generated JSON Schema types that define the tool input/output contracts. |
+| `@mcp-gen-ui/core` | Stable embedder APIs: `BenefitRepository`, `BenefitToolService`, `SnapshotStore`, and the candidate-framed recommendation/checklist helpers they compose. |
+| `@mcp-gen-ui/mcp-server` | The stdio MCP server binary that exposes the five gateway tools. |
+
+`fixtureBenefits` is exported as example data for tests, demos, and local
+experiments. It is not a live government data source or a stability promise about
+real benefit availability.
+
+### Embed the core package
+
+```bash
+pnpm add @mcp-gen-ui/core
+```
+
+```ts
+import { BenefitToolService, FixtureBenefitRepository } from "@mcp-gen-ui/core";
+
+const service = new BenefitToolService(new FixtureBenefitRepository());
+const results = await service.searchBenefits({
+  query: "부산 취업 지원",
+  profile: { region: "부산", employmentStatus: "unemployed" }
+});
+```
+
+See [`docs/extending.md`](docs/extending.md) for custom `BenefitRepository`
+implementations, `SnapshotStore` usage, and extension safety rules.
+
+### Versioning while pre-1.0
+
+This project follows SemVer, but while packages are `0.x`, minor releases may
+include breaking changes to the public API. Patch releases should remain
+backward-compatible bug fixes. Breaking 0.x minors will be called out in the
+changelog and migration notes where practical.
+
 ## Tools
 
 | Tool | Input | Output |
