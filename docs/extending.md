@@ -50,7 +50,7 @@ for an asynchronous JSON-file implementation.
 
 ## Tool behavior supplied by `BenefitToolService`
 
-Once a custom repository is wired in, all five tools operate on those records:
+Once a custom repository is wired in, the gateway tools operate on those records:
 
 - `searchBenefits` calls `repository.search()`, runs `recommendBenefits`, and
   records snapshots when a `SnapshotStore` is provided.

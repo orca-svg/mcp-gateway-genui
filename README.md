@@ -2,7 +2,7 @@
 
 Open-source **MCP gateway for public-benefit discovery and Gen UI rendering**.
 
-It exposes Korean public-benefit data through five deterministic MCP tools and
+It exposes Korean public-benefit data through deterministic MCP tools and
 renders the structured JSON responses as compact UI. The server is **LLM-free** —
 the MCP host model handles the conversation and decides which tools to call.
 
@@ -41,7 +41,7 @@ Host (Claude / any MCP host)
 | --- | --- |
 | `@mcp-gen-ui/schema` | Zod schemas as the single source of truth; exports JSON Schema. |
 | `@mcp-gen-ui/core` | Repository, rule-based recommender, SQLite snapshot/change-log, plugin consistency rules, transport-neutral `BenefitToolService`. |
-| `@mcp-gen-ui/mcp-server` | stdio MCP server registering the five tools. |
+| `@mcp-gen-ui/mcp-server` | stdio MCP server registering the gateway tools. |
 | `@mcp-gen-ui/demo-ui` | Vite + React renderer; maps fixture domain JSON through an A2UI adapter. |
 
 ## Public API
@@ -53,7 +53,7 @@ gateway without taking on the demo app or repository internals:
 | --- | --- |
 | `@mcp-gen-ui/schema` | Zod schemas and generated JSON Schema types that define the tool input/output contracts. |
 | `@mcp-gen-ui/core` | Stable embedder APIs: `BenefitRepository`, `BenefitToolService`, `SnapshotStore`, and the candidate-framed recommendation/checklist helpers they compose. |
-| `@mcp-gen-ui/mcp-server` | The stdio MCP server binary that exposes the five gateway tools. |
+| `@mcp-gen-ui/mcp-server` | The stdio MCP server binary that exposes the gateway tools. |
 
 `fixtureBenefits` is exported as example data for tests, demos, and local
 experiments. It is not a live government data source or a stability promise about
@@ -91,6 +91,7 @@ changelog and migration notes where practical.
 | --- | --- | --- |
 | `searchBenefits` | `{ query, profile }` | Ranked benefit candidates with evidence. |
 | `getBenefitDetail` | `{ id }` | Structured benefit detail. |
+| `getUpcomingDeadlines` | `{ profile?, withinDays? }` | Deadline-bearing benefit candidates sorted by soonest application deadline. |
 | `buildChecklist` | `{ benefitId }` | Document checklist with a non-eligibility caveat. |
 | `getApplicationGuide` | `{ benefitId }` | User-action-only application steps. |
 | `getChangeLog` | `{ entityId? }` | Snapshot / change-log entries. |

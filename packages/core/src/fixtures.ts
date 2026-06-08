@@ -20,6 +20,7 @@ export const fixtureBenefits: BenefitRecord[] = [
       "공고별 소득 기준 확인 필요"
     ],
     applicationPeriod: "공고별 상이",
+    applicationDeadline: "2030-07-15T09:00:00.000Z",
     fee: "없음",
     processingTime: "공고별 상이",
     documents: [

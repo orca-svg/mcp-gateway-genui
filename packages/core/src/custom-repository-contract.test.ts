@@ -16,6 +16,7 @@ const arbitraryBenefit: BenefitRecord = {
   target: "부산 거주 미취업 구직자 중 돌봄 직무 교육 참여 희망자",
   eligibility: ["부산 거주", "미취업", "교육 참여 의사 확인"],
   applicationPeriod: "분기별 모집",
+  applicationDeadline: "2030-08-01T09:00:00.000Z",
   fee: "없음",
   processingTime: "접수 후 14일 이내",
   documents: [
@@ -61,7 +62,7 @@ class AsyncMapBenefitRepository implements BenefitRepository {
 }
 
 describe("custom BenefitRepository extension contract", () => {
-  it("serves all five tools through an asynchronous custom repository", async () => {
+  it("serves all tools through an asynchronous custom repository", async () => {
     const dir = mkdtempSync(join(tmpdir(), "mcp-gen-ui-custom-repo-"));
     const store = new SnapshotStore(join(dir, "test.db"));
     const service = new BenefitToolService(new AsyncMapBenefitRepository(), store);
@@ -76,6 +77,14 @@ describe("custom BenefitRepository extension contract", () => {
       }
     });
     const detail = await service.getBenefitDetail(arbitraryBenefit.id);
+    const deadlines = await service.getUpcomingDeadlines({
+      profile: {
+        region: "부산",
+        ageRange: "forties",
+        employmentStatus: "unemployed",
+        interests: ["employment"]
+      }
+    });
     const checklist = await service.buildChecklist(arbitraryBenefit.id);
     const guide = await service.getApplicationGuide(arbitraryBenefit.id);
     const changeLog = await service.getChangeLog(arbitraryBenefit.id);
@@ -88,6 +97,7 @@ describe("custom BenefitRepository extension contract", () => {
     });
     expect(search.results[0]?.reasons).toContain("부산 지역 조건과 일치합니다.");
     expect(detail.title).toBe(arbitraryBenefit.title);
+    expect(deadlines.results.map((result) => result.id)).toEqual([arbitraryBenefit.id]);
     expect(checklist.items.map((item) => item.id)).toEqual([
       "residence-confirmation",
       "job-seeker-registration"

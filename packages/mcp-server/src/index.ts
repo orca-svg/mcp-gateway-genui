@@ -3,10 +3,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { BenefitToolService, FixtureBenefitRepository, SnapshotStore } from "@mcp-gen-ui/core";
-import { BenefitSearchRequestSchema } from "@mcp-gen-ui/schema";
+import { BenefitSearchRequestSchema, UpcomingDeadlinesRequestSchema } from "@mcp-gen-ui/schema";
 
 /**
- * stdio MCP server. It exposes BenefitToolService as five deterministic tools.
+ * stdio MCP server. It exposes BenefitToolService as deterministic tools.
  * There is no LLM in this process — the host/client model orchestrates the
  * natural-language conversation and decides which tools to call.
  */
@@ -31,6 +31,13 @@ server.tool(
   "Return structured detail for a benefit candidate.",
   { id: z.string().min(1) },
   async ({ id }) => jsonToolResult(await tools.getBenefitDetail(id))
+);
+
+server.tool(
+  "getUpcomingDeadlines",
+  "Return benefits with upcoming structured application deadlines, optionally filtered by profile and day window.",
+  UpcomingDeadlinesRequestSchema.shape,
+  async (input) => jsonToolResult(await tools.getUpcomingDeadlines(input))
 );
 
 server.tool(
