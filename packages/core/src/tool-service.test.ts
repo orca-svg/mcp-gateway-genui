@@ -21,6 +21,8 @@ describe("BenefitToolService", () => {
     });
 
     expect(response.results[0]?.status).toBe("candidate");
+    expect(response.results[0]?.score).toBeGreaterThan(0);
+    expect(response.results[0]?.scoreBreakdown.length).toBeGreaterThan(0);
     expect(response.results.map((result) => result.id)).toContain(
       "seoul-youth-rent-support"
     );
