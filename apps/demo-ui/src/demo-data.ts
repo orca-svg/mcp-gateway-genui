@@ -24,6 +24,16 @@ export const demoSearchResponse: BenefitSearchResponse = {
       category: "housing",
       summary: "서울 거주 청년의 주거비 부담을 줄이기 위한 월세 지원 사업입니다.",
       status: "candidate",
+      score: 0.92,
+      scoreBreakdown: [
+        {
+          dimension: "region",
+          signal: 1,
+          weight: 1,
+          contribution: 1,
+          explanation: "지역 조건과 일치합니다."
+        }
+      ],
       reasons: ["서울 지역 조건과 일치합니다.", "나이대 조건과 일치합니다."],
       missingInfo: []
     },
@@ -34,6 +44,16 @@ export const demoSearchResponse: BenefitSearchResponse = {
       category: "education",
       summary: "대학생의 등록금 부담 완화를 위한 소득연계형 장학금입니다.",
       status: "needs_more_info",
+      score: 0.71,
+      scoreBreakdown: [
+        {
+          dimension: "student",
+          signal: 1,
+          weight: 1,
+          contribution: 1,
+          explanation: "학생 조건과 일치합니다."
+        }
+      ],
       reasons: ["학생 조건과 일치합니다."],
       missingInfo: ["학자금 지원 구간 확인이 필요합니다."]
     }

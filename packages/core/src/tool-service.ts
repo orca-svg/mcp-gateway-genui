@@ -63,7 +63,8 @@ export class BenefitToolService {
         : now + request.withinDays * 24 * 60 * 60 * 1000;
     const recommended = recommendBenefits(benefits, {
       query: "혜택 지원 신청 마감",
-      profile: request.profile
+      profile: request.profile,
+      weights: {}
     });
     const recommendationById = new Map(recommended.map((summary) => [summary.id, summary]));
 
@@ -89,6 +90,8 @@ export class BenefitToolService {
         category: benefit.category,
         summary: benefit.summary,
         status: recommendation?.status ?? "needs_more_info",
+        score: recommendation?.score ?? 0,
+        scoreBreakdown: recommendation?.scoreBreakdown ?? [],
         reasons: recommendation?.reasons ?? [],
         missingInfo: recommendation?.missingInfo ?? [],
         applicationDeadline: benefit.applicationDeadline!

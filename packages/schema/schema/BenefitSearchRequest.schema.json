@@ -72,6 +72,51 @@
                 ]
               },
               "default": []
+            },
+            "persona": {
+              "type": "string",
+              "enum": [
+                "student",
+                "job_seeker",
+                "housing",
+                "family",
+                "default"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "default": {}
+        },
+        "weights": {
+          "type": "object",
+          "properties": {
+            "region": {
+              "type": "number",
+              "minimum": 0
+            },
+            "age": {
+              "type": "number",
+              "minimum": 0
+            },
+            "student": {
+              "type": "number",
+              "minimum": 0
+            },
+            "employment": {
+              "type": "number",
+              "minimum": 0
+            },
+            "household": {
+              "type": "number",
+              "minimum": 0
+            },
+            "category": {
+              "type": "number",
+              "minimum": 0
+            },
+            "query": {
+              "type": "number",
+              "minimum": 0
             }
           },
           "additionalProperties": false,

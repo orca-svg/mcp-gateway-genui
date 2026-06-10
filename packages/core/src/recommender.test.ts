@@ -3,6 +3,95 @@ import { recommendBenefits } from "./recommender.js";
 import { fixtureBenefits } from "./fixtures.js";
 
 describe("recommendBenefits", () => {
+  it("keeps hard blockers ahead of score weighting", () => {
+    const [result] = recommendBenefits(
+      [
+        {
+          ...fixtureBenefits[0]!,
+          id: "seoul-only",
+          regionTags: ["서울"],
+          searchableText: "부산 관심사와 매우 강한 검색 일치"
+        }
+      ],
+      {
+        query: "부산 관심사 검색",
+        profile: {
+          region: "부산",
+          studentStatus: "unknown",
+          employmentStatus: "unknown",
+          householdType: "unknown",
+          interests: ["housing"]
+        },
+        weights: { query: 100, category: 100, region: 1 }
+      }
+    );
+
+    expect(result?.status).toBe("not_applicable");
+    expect(result?.score).toBeLessThan(1);
+  });
+
+  it("normalizes weighted score math and gives missing inputs partial credit", () => {
+    const [result] = recommendBenefits(
+      [
+        {
+          ...fixtureBenefits[0]!,
+          regionTags: ["서울"],
+          ageRanges: ["twenties"],
+          studentOnly: false,
+          employmentStatuses: []
+        }
+      ],
+      {
+        query: "무관한검색어",
+        profile: {
+          region: "서울",
+          studentStatus: "unknown",
+          employmentStatus: "unknown",
+          householdType: "unknown",
+          interests: []
+        },
+        weights: { region: 2, age: 2 }
+      }
+    );
+
+    expect(result?.score).toBe(0.75);
+    expect(result?.scoreBreakdown).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ dimension: "region", signal: 1, weight: 2 }),
+        expect.objectContaining({ dimension: "age", signal: 0.5, weight: 2 })
+      ])
+    );
+  });
+
+  it("uses household type matching as a scoring and evidence dimension", () => {
+    const [result] = recommendBenefits(
+      [
+        {
+          ...fixtureBenefits[0]!,
+          householdTypes: ["single"],
+          regionTags: [],
+          ageRanges: [],
+          employmentStatuses: []
+        }
+      ],
+      {
+        query: "월세",
+        profile: {
+          studentStatus: "unknown",
+          employmentStatus: "unknown",
+          householdType: "single",
+          interests: []
+        },
+        weights: { household: 3 }
+      }
+    );
+
+    expect(result?.scoreBreakdown).toEqual(
+      expect.arrayContaining([expect.objectContaining({ dimension: "household", signal: 1 })])
+    );
+    expect(result?.reasons).toContain("가구 유형 조건과 일치합니다.");
+  });
+
   it("marks a matching benefit as a candidate with evidence", () => {
     const [top] = recommendBenefits(fixtureBenefits, {
       query: "서울 청년 월세 주거 지원",
@@ -71,5 +160,28 @@ describe("recommendBenefits", () => {
     const rank = { candidate: 0, needs_more_info: 1, not_applicable: 2 };
     const ranks = statuses.map((s) => rank[s]);
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  });
+
+  it("orders results by status, score descending, then reasons", () => {
+    const results = recommendBenefits(
+      [
+        { ...fixtureBenefits[0]!, id: "low", title: "나중", category: "other", searchableText: "" },
+        { ...fixtureBenefits[0]!, id: "high", title: "먼저", category: "housing", searchableText: "월세" }
+      ],
+      {
+        query: "월세",
+        profile: {
+          region: "서울",
+          ageRange: "twenties",
+          studentStatus: "unknown",
+          employmentStatus: "unknown",
+          householdType: "unknown",
+          interests: ["housing"]
+        },
+        weights: { category: 5, query: 5 }
+      }
+    );
+
+    expect(results.map((result) => result.id)).toEqual(["high", "low"]);
   });
 });

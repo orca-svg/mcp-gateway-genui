@@ -2,7 +2,11 @@ import type {
   BenefitRecord,
   BenefitSearchRequest,
   BenefitSummary,
+  RecommendationPersona,
+  RecommendationScoreDimension,
   RecommendationStatus,
+  RecommendationWeights,
+  ScoreBreakdownItem,
   UserProfile
 } from "@mcp-gen-ui/schema";
 
@@ -21,28 +25,32 @@ export function recommendBenefits(
   const queryTerms = tokenize(
     `${request.query} ${request.profile.interests.join(" ")}`
   );
+  const scorePlan = buildScorePlan(request.profile.persona, request.weights ?? {});
 
   return benefits
-    .map((benefit) => classifyBenefit(benefit, request.profile, queryTerms))
+    .map((benefit) => classifyBenefit(benefit, request.profile, queryTerms, scorePlan))
     .sort(
       (a, b) =>
         statusRank(a.status) - statusRank(b.status) ||
-        b.reasons.length - a.reasons.length
+        b.score - a.score ||
+        b.reasons.length - a.reasons.length ||
+        a.title.localeCompare(b.title, "ko")
     );
 }
 
 function classifyBenefit(
   benefit: BenefitRecord,
   profile: UserProfile,
-  queryTerms: string[]
+  queryTerms: string[],
+  scorePlan: ScorePlan
 ): BenefitSummary {
   const reasons: string[] = [];
   const missingInfo: string[] = [];
   const blockers: string[] = [];
 
-  const searchable =
-    `${benefit.title} ${benefit.summary} ${benefit.searchableText}`.toLowerCase();
-  if (queryTerms.some((term) => searchable.includes(term))) {
+  const searchable = searchableTextFor(benefit);
+  const queryMatched = queryTerms.some((term) => searchable.includes(term));
+  if (queryMatched) {
     reasons.push("검색어와 혜택 설명이 일치합니다.");
   }
 
@@ -50,8 +58,16 @@ function classifyBenefit(
   evaluateAge(benefit, profile, reasons, missingInfo, blockers);
   evaluateStudent(benefit, profile, reasons, missingInfo, blockers);
   evaluateEmployment(benefit, profile, reasons, missingInfo, blockers);
+  evaluateHousehold(benefit, profile, reasons, missingInfo);
 
   const status = decideStatus(blockers, missingInfo, reasons);
+  const scoreBreakdown = computeScoreBreakdown(
+    benefit,
+    profile,
+    queryTerms,
+    scorePlan
+  );
+  const score = normalizeScore(scoreBreakdown);
 
   return {
     id: benefit.id,
@@ -60,6 +76,8 @@ function classifyBenefit(
     category: benefit.category,
     summary: benefit.summary,
     status,
+    score,
+    scoreBreakdown,
     reasons: status === "not_applicable" ? blockers : reasons,
     missingInfo
   };
@@ -133,6 +151,19 @@ function evaluateEmployment(
   }
 }
 
+function evaluateHousehold(
+  benefit: BenefitRecord,
+  profile: UserProfile,
+  reasons: string[],
+  _missingInfo: string[]
+): void {
+  const householdTypes = benefit.householdTypes ?? [];
+  if (householdTypes.length === 0 || profile.householdType === "unknown") return;
+  if (householdTypes.includes(profile.householdType)) {
+    reasons.push("가구 유형 조건과 일치합니다.");
+  }
+}
+
 function decideStatus(
   blockers: string[],
   missingInfo: string[],
@@ -141,6 +172,186 @@ function decideStatus(
   if (blockers.length > 0) return "not_applicable";
   if (missingInfo.length > 0 || reasons.length === 0) return "needs_more_info";
   return "candidate";
+}
+
+const SCORE_DIMENSIONS: RecommendationScoreDimension[] = [
+  "region",
+  "age",
+  "student",
+  "employment",
+  "household",
+  "category",
+  "query"
+];
+
+const DEFAULT_WEIGHTS: Required<RecommendationWeights> = {
+  region: 1,
+  age: 1,
+  student: 1,
+  employment: 1,
+  household: 1,
+  category: 1,
+  query: 1
+};
+
+const PERSONA_WEIGHTS: Record<RecommendationPersona, Partial<RecommendationWeights>> = {
+  default: {},
+  student: { student: 3, age: 2, category: 2 },
+  job_seeker: { employment: 3, age: 1.5, query: 2 },
+  housing: { region: 3, household: 2, category: 2 },
+  family: { household: 3, category: 2, region: 1.5 }
+};
+
+type ScorePlan = {
+  dimensions: RecommendationScoreDimension[];
+  weights: Required<RecommendationWeights>;
+};
+
+function buildScorePlan(
+  persona: RecommendationPersona | undefined,
+  overrides: RecommendationWeights
+): ScorePlan {
+  const weights = {
+    ...DEFAULT_WEIGHTS,
+    ...(persona ? PERSONA_WEIGHTS[persona] : {}),
+    ...overrides
+  };
+  const overrideDimensions = SCORE_DIMENSIONS.filter(
+    (dimension) => overrides[dimension] !== undefined
+  );
+
+  return {
+    dimensions: overrideDimensions.length > 0 ? overrideDimensions : SCORE_DIMENSIONS,
+    weights
+  };
+}
+
+function computeScoreBreakdown(
+  benefit: BenefitRecord,
+  profile: UserProfile,
+  queryTerms: string[],
+  scorePlan: ScorePlan
+): ScoreBreakdownItem[] {
+  return scorePlan.dimensions.map((dimension) => {
+    const signal = scoreSignal(dimension, benefit, profile, queryTerms);
+    const weight = scorePlan.weights[dimension];
+    return {
+      dimension,
+      signal: signal.value,
+      weight,
+      contribution: roundScore(signal.value * weight),
+      explanation: signal.explanation
+    };
+  });
+}
+
+function normalizeScore(scoreBreakdown: ScoreBreakdownItem[]): number {
+  const totalWeight = scoreBreakdown.reduce((sum, item) => sum + item.weight, 0);
+  if (totalWeight === 0) return 0;
+  const totalContribution = scoreBreakdown.reduce(
+    (sum, item) => sum + item.contribution,
+    0
+  );
+  return roundScore(totalContribution / totalWeight);
+}
+
+function scoreSignal(
+  dimension: RecommendationScoreDimension,
+  benefit: BenefitRecord,
+  profile: UserProfile,
+  queryTerms: string[]
+): { value: number; explanation: string } {
+  switch (dimension) {
+    case "region":
+      return constrainedStringSignal(
+        benefit.regionTags,
+        profile.region,
+        "지역 조건이 없어서 감점하지 않았습니다.",
+        "지역 조건과 일치합니다.",
+        "거주 지역 정보가 없어 부분 점수를 적용했습니다.",
+        "지역 조건과 일치하지 않습니다."
+      );
+    case "age":
+      return constrainedStringSignal(
+        benefit.ageRanges,
+        profile.ageRange,
+        "나이대 조건이 없어서 감점하지 않았습니다.",
+        "나이대 조건과 일치합니다.",
+        "나이대 정보가 없어 부분 점수를 적용했습니다.",
+        "나이대 조건과 일치하지 않습니다."
+      );
+    case "student":
+      if (!benefit.studentOnly) {
+        return { value: 1, explanation: "학생 전용 조건이 없어서 감점하지 않았습니다." };
+      }
+      if (profile.studentStatus === "student") {
+        return { value: 1, explanation: "학생 조건과 일치합니다." };
+      }
+      if (profile.studentStatus === "unknown") {
+        return { value: 0.5, explanation: "학생 여부 정보가 없어 부분 점수를 적용했습니다." };
+      }
+      return { value: 0, explanation: "학생 조건과 일치하지 않습니다." };
+    case "employment":
+      return constrainedStringSignal(
+        benefit.employmentStatuses,
+        profile.employmentStatus === "unknown" ? undefined : profile.employmentStatus,
+        "고용 상태 조건이 없어서 감점하지 않았습니다.",
+        "고용 상태 조건과 일치합니다.",
+        "고용 상태 정보가 없어 부분 점수를 적용했습니다.",
+        "고용 상태 조건과 일치하지 않습니다."
+      );
+    case "household":
+      return constrainedStringSignal(
+        benefit.householdTypes ?? [],
+        profile.householdType === "unknown" ? undefined : profile.householdType,
+        "가구 유형 조건이 없어서 감점하지 않았습니다.",
+        "가구 유형 조건과 일치합니다.",
+        "가구 유형 정보가 없어 부분 점수를 적용했습니다.",
+        "가구 유형 조건과 일치하지 않습니다."
+      );
+    case "category":
+      if (profile.interests.length === 0) {
+        return { value: 0.5, explanation: "관심 분야가 없어 부분 점수를 적용했습니다." };
+      }
+      return profile.interests.includes(benefit.category)
+        ? { value: 1, explanation: "관심 분야와 혜택 분야가 일치합니다." }
+        : { value: 0, explanation: "관심 분야와 혜택 분야가 일치하지 않습니다." };
+    case "query":
+      if (queryTerms.length === 0) {
+        return { value: 0, explanation: "검색어 신호가 없습니다." };
+      }
+      return queryTerms.some((term) => searchableTextFor(benefit).includes(term))
+        ? { value: 1, explanation: "검색어와 혜택 설명이 일치합니다." }
+        : { value: 0, explanation: "검색어와 혜택 설명이 일치하지 않습니다." };
+  }
+}
+
+function constrainedStringSignal<T extends string>(
+  requiredValues: T[],
+  profileValue: T | undefined,
+  unconstrainedExplanation: string,
+  matchExplanation: string,
+  missingExplanation: string,
+  mismatchExplanation: string
+): { value: number; explanation: string } {
+  if (requiredValues.length === 0) {
+    return { value: 1, explanation: unconstrainedExplanation };
+  }
+  if (!profileValue) {
+    return { value: 0.5, explanation: missingExplanation };
+  }
+  if (requiredValues.includes(profileValue)) {
+    return { value: 1, explanation: matchExplanation };
+  }
+  return { value: 0, explanation: mismatchExplanation };
+}
+
+function searchableTextFor(benefit: BenefitRecord): string {
+  return `${benefit.title} ${benefit.summary} ${benefit.searchableText}`.toLowerCase();
+}
+
+function roundScore(value: number): number {
+  return Math.round(value * 1000) / 1000;
 }
 
 function tokenize(input: string): string[] {

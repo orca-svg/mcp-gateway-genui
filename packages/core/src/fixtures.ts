@@ -37,7 +37,8 @@ export const fixtureBenefits: BenefitRecord[] = [
     regionTags: ["서울"],
     ageRanges: ["twenties", "thirties"],
     studentOnly: false,
-    employmentStatuses: []
+    employmentStatuses: [],
+    householdTypes: ["single"]
   },
   {
     id: "national-scholarship",
@@ -63,7 +64,8 @@ export const fixtureBenefits: BenefitRecord[] = [
     regionTags: [],
     ageRanges: ["teen", "twenties", "thirties"],
     studentOnly: true,
-    employmentStatuses: []
+    employmentStatuses: [],
+    householdTypes: []
   },
   {
     id: "job-seeker-allowance",
@@ -89,6 +91,7 @@ export const fixtureBenefits: BenefitRecord[] = [
     regionTags: [],
     ageRanges: ["twenties", "thirties", "forties", "fifties"],
     studentOnly: false,
-    employmentStatuses: ["unemployed"]
+    employmentStatuses: ["unemployed"],
+    householdTypes: []
   }
 ];

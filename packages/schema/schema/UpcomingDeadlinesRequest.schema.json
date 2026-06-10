@@ -68,6 +68,16 @@
                 ]
               },
               "default": []
+            },
+            "persona": {
+              "type": "string",
+              "enum": [
+                "student",
+                "job_seeker",
+                "housing",
+                "family",
+                "default"
+              ]
             }
           },
           "additionalProperties": false,
