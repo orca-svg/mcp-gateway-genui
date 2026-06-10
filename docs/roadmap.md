@@ -22,6 +22,45 @@
 - [x] Document the pre-1.0 semver policy: 0.x minor releases may break public
   APIs, while patch releases should remain backward-compatible.
 
+## G-3 (in flight — capability wave)
+
+Tracked by the issue pipeline; status as of 2026-06-10:
+
+- [x] Persona-weighted scoring with hard-blocker safety gate (#10 / #18)
+- [x] Structured `applicationDeadline` + `getUpcomingDeadlines` tool (#11 / #19)
+- [ ] Built-in persona presets + `listPersonas` tool (#13)
+- [ ] Adapter framework + Composite/Caching + 온통청년 live adapter (#12)
+- [ ] `applicationDeadline` timezone policy + shared KST→UTC helper (#20)
+- [ ] Demo UI renders scores/personas/deadlines + `docs/personas.md` (#16)
+- [ ] Changesets + CHANGELOG entries for the G-3 features (#22)
+
+## G-4 (public 0.x — operational trust)
+
+Goal: a third party can adopt the gateway in production with confidence.
+Publishing does **not** wait for full adapter coverage — 0.1.0 ships first and
+each completed adapter cuts a 0.x minor.
+
+- [ ] First public npm release 0.1.0 with provenance (#5, after #22)
+- [ ] Remaining official adapters: 복지로 + 보조금24/장학재단 (#14),
+  `McpClientBenefitRepository` + Korean MCP catalog docs (#15)
+- [ ] Daily live-API canary CI with auto-filed drift issues and per-source
+  README status badges (#23)
+- [ ] Public-data attribution (공공누리), non-eligibility disclaimer alignment,
+  and a SECURITY.md response policy (#24)
+- [ ] MCP host compatibility matrix: Claude Desktop, Claude Code, one
+  non-Claude host, with config snippets in README (#25)
+
+## G-5 (1.0 — contract freeze + external validation)
+
+Gate: all four sources officially supported, canary green for 14 consecutive
+days, compatibility matrix complete, compliance docs merged.
+
+- [ ] 1.0 contract freeze across `schema` / `core` / `mcp-server` / `adapters`
+  (MCP tool surface, public exports, JSON Schema artifacts) with a contract
+  snapshot test; demo-ui stays unpublished (#26)
+- [ ] Official MCP registry listing + external-adoption evidence tracking;
+  success = listing accepted and ≥3 independent adoption evidences (#27)
+
 ## Out of scope for G-1
 
 These are intentionally deferred (see `docs/prd.md` → Out of Scope):
@@ -38,8 +77,9 @@ These are intentionally deferred (see `docs/prd.md` → Out of Scope):
 - Government24 login, identity verification, or form-submission automation
   (permanently out of scope).
 
-## Candidate next steps
+## Candidate next steps (post-G-5)
 
-- Add an API-backed `BenefitRepository` implementation behind the existing interface.
-- Expand fixtures and consistency rules.
-- Add an HTTP/SSE transport adapter over `BenefitToolService`.
+- Add an HTTP/SSE transport adapter over `BenefitToolService` (core is already
+  transport-neutral; becomes relevant only if a hosted deployment is ever
+  wanted — not a current goal).
+- Expand fixtures and consistency rules alongside new sources.
