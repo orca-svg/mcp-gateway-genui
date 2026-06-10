@@ -27,7 +27,7 @@ Useful scripts:
 ```
 packages/schema      Zod schemas (single source of truth) + JSON Schema export
 packages/core        repository, recommender, sqlite-store, consistency, tool-service
-packages/mcp-server  stdio MCP server exposing the five tools
+packages/mcp-server  stdio MCP server exposing the gateway tools
 apps/demo-ui         Vite + React renderer (domain JSON → A2UI adapter)
 docs/                PRD, host prompts, git workflow, roadmap
 ```

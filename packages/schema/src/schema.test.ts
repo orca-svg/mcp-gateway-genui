@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  BenefitDetailSchema,
   BenefitSearchRequestSchema,
   BenefitSummarySchema,
+  UpcomingDeadlinesRequestSchema,
+  UpcomingDeadlinesResponseSchema,
   BenefitRecordSchema,
   UserProfileSchema
 } from "./index.js";
@@ -71,6 +74,44 @@ describe("BenefitSearchRequestSchema", () => {
 });
 
 describe("BenefitRecordSchema", () => {
+  it("accepts an optional structured application deadline on records and details", () => {
+    const detail = BenefitDetailSchema.parse({
+      id: "deadline-benefit",
+      title: "deadline benefit",
+      provider: "provider",
+      category: "other",
+      summary: "summary",
+      target: "target",
+      applicationDeadline: "2026-07-15T09:00:00.000Z",
+      sourceUrl: "https://example.com/benefit",
+      lastFetchedAt: "2026-05-20T00:00:00.000Z"
+    });
+
+    const record = BenefitRecordSchema.parse({
+      ...detail,
+      searchableText: "deadline"
+    });
+
+    expect(detail.applicationDeadline).toBe("2026-07-15T09:00:00.000Z");
+    expect(record.applicationDeadline).toBe("2026-07-15T09:00:00.000Z");
+  });
+
+  it("rejects malformed structured application deadlines", () => {
+    expect(() =>
+      BenefitRecordSchema.parse({
+        id: "deadline-benefit",
+        title: "deadline benefit",
+        provider: "provider",
+        category: "other",
+        summary: "summary",
+        target: "target",
+        applicationDeadline: "July 15, 2026",
+        sourceUrl: "https://example.com/benefit",
+        lastFetchedAt: "2026-05-20T00:00:00.000Z"
+      })
+    ).toThrow();
+  });
+
   it("defaults household type tags for repository records", () => {
     const record = BenefitRecordSchema.parse({
       id: "x",
@@ -99,5 +140,30 @@ describe("BenefitRecordSchema", () => {
         lastFetchedAt: "2026-05-20T00:00:00.000Z"
       })
     ).toThrow();
+  });
+});
+
+describe("UpcomingDeadlines schemas", () => {
+  it("defaults the request profile and parses deadline-bearing responses", () => {
+    const request = UpcomingDeadlinesRequestSchema.parse({ withinDays: 30 });
+    const response = UpcomingDeadlinesResponseSchema.parse({
+      profile: request.profile,
+      withinDays: request.withinDays,
+      results: [
+        {
+          id: "deadline-benefit",
+          title: "deadline benefit",
+          provider: "provider",
+          category: "other",
+          summary: "summary",
+          status: "candidate",
+          applicationDeadline: "2026-07-15T09:00:00.000Z"
+        }
+      ],
+      generatedAt: "2026-06-01T00:00:00.000Z"
+    });
+
+    expect(request.profile.interests).toEqual([]);
+    expect(response.results[0]?.applicationDeadline).toBe("2026-07-15T09:00:00.000Z");
   });
 });

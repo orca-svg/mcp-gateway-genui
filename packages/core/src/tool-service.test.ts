@@ -2,6 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { BenefitRecord } from "@mcp-gen-ui/schema";
 import { FixtureBenefitRepository } from "./repository.js";
 import { SnapshotStore } from "./sqlite-store.js";
 import { BenefitToolService } from "./tool-service.js";
@@ -81,4 +82,75 @@ describe("BenefitToolService", () => {
     expect(log.entries.some((entry) => entry.changeType === "unchanged")).toBe(true);
     store.close();
   });
+
+  it("returns applicable deadline-bearing benefits sorted by deadline and filtered by window", async () => {
+    const soon = daysFromNow(5);
+    const later = daysFromNow(20);
+    const outsideWindow = daysFromNow(45);
+    const benefits = [
+      deadlineBenefit("later-seoul", later, { regionTags: ["서울"] }),
+      deadlineBenefit("soon-seoul", soon, { regionTags: ["서울"] }),
+      deadlineBenefit("outside-window", outsideWindow, { regionTags: ["서울"] }),
+      deadlineBenefit("busan-only", daysFromNow(3), { regionTags: ["부산"] }),
+      deadlineBenefit("no-deadline", undefined, { regionTags: ["서울"] })
+    ];
+    const service = new BenefitToolService(new FixtureBenefitRepository(benefits));
+
+    const response = await service.getUpcomingDeadlines({
+      profile: { region: "서울" },
+      withinDays: 30
+    });
+
+    expect(response.withinDays).toBe(30);
+    expect(response.results.map((benefit) => benefit.id)).toEqual([
+      "soon-seoul",
+      "later-seoul"
+    ]);
+    expect(response.results.map((benefit) => benefit.applicationDeadline)).toEqual([
+      soon,
+      later
+    ]);
+    expect(response.results.every((benefit) => benefit.status !== "not_applicable")).toBe(
+      true
+    );
+    expect(
+      response.results.every((benefit) => benefit.scoreBreakdown.length > 0)
+    ).toBe(true);
+  });
 });
+
+function daysFromNow(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  date.setUTCHours(9, 0, 0, 0);
+  return date.toISOString();
+}
+
+function deadlineBenefit(
+  id: string,
+  applicationDeadline?: string,
+  overrides: Partial<BenefitRecord> = {}
+): BenefitRecord {
+  return {
+    id,
+    title: `Benefit ${id}`,
+    provider: "Provider",
+    category: "other",
+    summary: `Summary for ${id}`,
+    target: "Target",
+    eligibility: [],
+    applicationPeriod: "공고별 상이",
+    applicationDeadline,
+    documents: [],
+    applicationMethods: ["온라인 신청"],
+    sourceUrl: `https://example.com/${id}`,
+    lastFetchedAt: "2026-05-20T00:00:00.000Z",
+    evidence: [],
+    searchableText: id,
+    regionTags: [],
+    ageRanges: [],
+    studentOnly: false,
+    employmentStatuses: [],
+    ...overrides
+  };
+}

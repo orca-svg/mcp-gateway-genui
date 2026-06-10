@@ -143,6 +143,7 @@ export const BenefitDetailSchema = z.object({
   target: z.string().min(1),
   eligibility: z.array(z.string()).default([]),
   applicationPeriod: z.string().optional(),
+  applicationDeadline: z.string().datetime().optional(),
   fee: z.string().optional(),
   processingTime: z.string().optional(),
   documents: z.array(ChecklistItemSchema).default([]),
@@ -177,6 +178,22 @@ export const BenefitSearchResponseSchema = z.object({
   query: z.string(),
   profile: UserProfileSchema,
   results: z.array(BenefitSummarySchema),
+  generatedAt: z.string().datetime()
+});
+
+export const UpcomingDeadlinesRequestSchema = z.object({
+  profile: UserProfileSchema.default({}),
+  withinDays: z.number().int().nonnegative().optional()
+});
+
+export const UpcomingDeadlineSummarySchema = BenefitSummarySchema.extend({
+  applicationDeadline: z.string().datetime()
+});
+
+export const UpcomingDeadlinesResponseSchema = z.object({
+  profile: UserProfileSchema,
+  withinDays: z.number().int().nonnegative().optional(),
+  results: z.array(UpcomingDeadlineSummarySchema),
   generatedAt: z.string().datetime()
 });
 
@@ -225,6 +242,9 @@ export type BenefitDetail = z.infer<typeof BenefitDetailSchema>;
 export type BenefitRecord = z.infer<typeof BenefitRecordSchema>;
 export type BenefitSearchRequest = z.infer<typeof BenefitSearchRequestSchema>;
 export type BenefitSearchResponse = z.infer<typeof BenefitSearchResponseSchema>;
+export type UpcomingDeadlinesRequest = z.infer<typeof UpcomingDeadlinesRequestSchema>;
+export type UpcomingDeadlineSummary = z.infer<typeof UpcomingDeadlineSummarySchema>;
+export type UpcomingDeadlinesResponse = z.infer<typeof UpcomingDeadlinesResponseSchema>;
 export type ChecklistResponse = z.infer<typeof ChecklistResponseSchema>;
 export type ApplicationGuideResponse = z.infer<typeof ApplicationGuideResponseSchema>;
 export type ChangeLogEntry = z.infer<typeof ChangeLogEntrySchema>;

@@ -47,6 +47,10 @@
         "applicationPeriod": {
           "type": "string"
         },
+        "applicationDeadline": {
+          "type": "string",
+          "format": "date-time"
+        },
         "fee": {
           "type": "string"
         },

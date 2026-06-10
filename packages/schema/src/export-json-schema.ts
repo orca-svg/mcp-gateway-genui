@@ -7,7 +7,9 @@ import {
   BenefitSearchRequestSchema,
   BenefitSearchResponseSchema,
   ChangeLogResponseSchema,
-  ChecklistResponseSchema
+  ChecklistResponseSchema,
+  UpcomingDeadlinesRequestSchema,
+  UpcomingDeadlinesResponseSchema
 } from "./index.js";
 
 /**
@@ -17,6 +19,8 @@ import {
 const schemas = {
   BenefitSearchRequest: BenefitSearchRequestSchema,
   BenefitSearchResponse: BenefitSearchResponseSchema,
+  UpcomingDeadlinesRequest: UpcomingDeadlinesRequestSchema,
+  UpcomingDeadlinesResponse: UpcomingDeadlinesResponseSchema,
   BenefitDetail: BenefitDetailSchema,
   ChecklistResponse: ChecklistResponseSchema,
   ApplicationGuideResponse: ApplicationGuideResponseSchema,

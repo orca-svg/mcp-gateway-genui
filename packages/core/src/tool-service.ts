@@ -4,19 +4,22 @@ import {
   BenefitSearchResponseSchema,
   ChangeLogResponseSchema,
   ChecklistResponseSchema,
+  UpcomingDeadlinesRequestSchema,
+  UpcomingDeadlinesResponseSchema,
   type ApplicationGuideResponse,
   type BenefitDetail,
   type BenefitRecord,
   type BenefitSearchResponse,
   type ChangeLogResponse,
-  type ChecklistResponse
+  type ChecklistResponse,
+  type UpcomingDeadlinesResponse
 } from "@mcp-gen-ui/schema";
 import type { BenefitRepository } from "./repository.js";
 import { recommendBenefits } from "./recommender.js";
 import type { SnapshotStore } from "./sqlite-store.js";
 
 /**
- * Transport-neutral entry point for the five MVP tools. The MCP server (or any
+ * Transport-neutral entry point for the gateway tools. The MCP server (or any
  * other transport) calls these methods; there is no LLM here — orchestration is
  * the host's responsibility. Every input and output is validated against the
  * shared Zod contracts.
@@ -48,6 +51,60 @@ export class BenefitToolService {
     }
     this.snapshots?.recordBenefitSnapshot(benefit);
     return benefit;
+  }
+
+  async getUpcomingDeadlines(input: unknown): Promise<UpcomingDeadlinesResponse> {
+    const request = UpcomingDeadlinesRequestSchema.parse(input ?? {});
+    const benefits = await this.repository.search();
+    const now = Date.now();
+    const maxDeadline =
+      request.withinDays === undefined
+        ? undefined
+        : now + request.withinDays * 24 * 60 * 60 * 1000;
+    const recommended = recommendBenefits(benefits, {
+      query: "혜택 지원 신청 마감",
+      profile: request.profile,
+      weights: {}
+    });
+    const recommendationById = new Map(recommended.map((summary) => [summary.id, summary]));
+
+    const results = benefits
+      .filter((benefit) => benefit.applicationDeadline)
+      .map((benefit) => ({
+        benefit,
+        deadlineTime: Date.parse(benefit.applicationDeadline!),
+        recommendation: recommendationById.get(benefit.id)
+      }))
+      .filter(
+        ({ deadlineTime, recommendation }) =>
+          Number.isFinite(deadlineTime) &&
+          deadlineTime >= now &&
+          (maxDeadline === undefined || deadlineTime <= maxDeadline) &&
+          recommendation?.status !== "not_applicable"
+      )
+      .sort((a, b) => a.deadlineTime - b.deadlineTime)
+      .map(({ benefit, recommendation }) => ({
+        id: benefit.id,
+        title: benefit.title,
+        provider: benefit.provider,
+        category: benefit.category,
+        summary: benefit.summary,
+        status: recommendation?.status ?? "needs_more_info",
+        score: recommendation?.score ?? 0,
+        scoreBreakdown: recommendation?.scoreBreakdown ?? [],
+        reasons: recommendation?.reasons ?? [],
+        missingInfo: recommendation?.missingInfo ?? [],
+        applicationDeadline: benefit.applicationDeadline!
+      }));
+
+    this.recordSnapshots(benefits);
+
+    return UpcomingDeadlinesResponseSchema.parse({
+      profile: request.profile,
+      withinDays: request.withinDays,
+      results,
+      generatedAt: new Date().toISOString()
+    });
   }
 
   async buildChecklist(benefitId: string): Promise<ChecklistResponse> {
