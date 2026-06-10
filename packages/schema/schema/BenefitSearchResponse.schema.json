@@ -71,6 +71,16 @@
                 ]
               },
               "default": []
+            },
+            "persona": {
+              "type": "string",
+              "enum": [
+                "student",
+                "job_seeker",
+                "housing",
+                "family",
+                "default"
+              ]
             }
           },
           "additionalProperties": false
@@ -106,6 +116,57 @@
                   "needs_more_info",
                   "not_applicable"
                 ]
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "default": 0
+              },
+              "scoreBreakdown": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "dimension": {
+                      "type": "string",
+                      "enum": [
+                        "region",
+                        "age",
+                        "student",
+                        "employment",
+                        "household",
+                        "category",
+                        "query"
+                      ]
+                    },
+                    "signal": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    "weight": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "contribution": {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    "explanation": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "dimension",
+                    "signal",
+                    "weight",
+                    "contribution",
+                    "explanation"
+                  ],
+                  "additionalProperties": false
+                },
+                "default": []
               },
               "reasons": {
                 "type": "array",

@@ -49,6 +49,44 @@ export const HouseholdTypeSchema = z.enum([
   "unknown"
 ]);
 
+export const RecommendationPersonaSchema = z.enum([
+  "student",
+  "job_seeker",
+  "housing",
+  "family",
+  "default"
+]);
+
+export const RecommendationScoreDimensionSchema = z.enum([
+  "region",
+  "age",
+  "student",
+  "employment",
+  "household",
+  "category",
+  "query"
+]);
+
+export const RecommendationWeightsSchema = z
+  .object({
+    region: z.number().nonnegative().optional(),
+    age: z.number().nonnegative().optional(),
+    student: z.number().nonnegative().optional(),
+    employment: z.number().nonnegative().optional(),
+    household: z.number().nonnegative().optional(),
+    category: z.number().nonnegative().optional(),
+    query: z.number().nonnegative().optional()
+  })
+  .strict();
+
+export const ScoreBreakdownItemSchema = z.object({
+  dimension: RecommendationScoreDimensionSchema,
+  signal: z.number().min(0).max(1),
+  weight: z.number().nonnegative(),
+  contribution: z.number().min(0),
+  explanation: z.string()
+});
+
 /**
  * Non-identifying user profile. By contract this never carries resident
  * registration numbers, certificates, tokens, or other sensitive identifiers.
@@ -59,7 +97,8 @@ export const UserProfileSchema = z.object({
   studentStatus: StudentStatusSchema.default("unknown"),
   employmentStatus: EmploymentStatusSchema.default("unknown"),
   householdType: HouseholdTypeSchema.default("unknown"),
-  interests: z.array(BenefitCategorySchema).default([])
+  interests: z.array(BenefitCategorySchema).default([]),
+  persona: RecommendationPersonaSchema.optional()
 });
 
 export const EvidenceSchema = z.object({
@@ -75,6 +114,8 @@ export const BenefitSummarySchema = z.object({
   category: BenefitCategorySchema,
   summary: z.string().min(1),
   status: RecommendationStatusSchema,
+  score: z.number().min(0).max(1).default(0),
+  scoreBreakdown: z.array(ScoreBreakdownItemSchema).default([]),
   reasons: z.array(z.string()).default([]),
   missingInfo: z.array(z.string()).default([])
 });
@@ -122,12 +163,14 @@ export const BenefitRecordSchema = BenefitDetailSchema.extend({
   regionTags: z.array(z.string()).default([]),
   ageRanges: z.array(AgeRangeSchema).default([]),
   studentOnly: z.boolean().default(false),
-  employmentStatuses: z.array(EmploymentStatusSchema).default([])
+  employmentStatuses: z.array(EmploymentStatusSchema).default([]),
+  householdTypes: z.array(HouseholdTypeSchema).default([])
 });
 
 export const BenefitSearchRequestSchema = z.object({
   query: z.string().min(1),
-  profile: UserProfileSchema.default({})
+  profile: UserProfileSchema.default({}),
+  weights: RecommendationWeightsSchema.default({})
 });
 
 export const BenefitSearchResponseSchema = z.object({
@@ -169,6 +212,10 @@ export type AgeRange = z.infer<typeof AgeRangeSchema>;
 export type StudentStatus = z.infer<typeof StudentStatusSchema>;
 export type EmploymentStatus = z.infer<typeof EmploymentStatusSchema>;
 export type HouseholdType = z.infer<typeof HouseholdTypeSchema>;
+export type RecommendationPersona = z.infer<typeof RecommendationPersonaSchema>;
+export type RecommendationScoreDimension = z.infer<typeof RecommendationScoreDimensionSchema>;
+export type RecommendationWeights = z.infer<typeof RecommendationWeightsSchema>;
+export type ScoreBreakdownItem = z.infer<typeof ScoreBreakdownItemSchema>;
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 export type Evidence = z.infer<typeof EvidenceSchema>;
 export type BenefitSummary = z.infer<typeof BenefitSummarySchema>;
