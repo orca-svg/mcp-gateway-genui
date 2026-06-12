@@ -1,4 +1,5 @@
 export * from "./consistency.js";
+export * from "./deadlines.js";
 export * from "./fixtures.js";
 export * from "./recommender.js";
 export * from "./repository.js";
