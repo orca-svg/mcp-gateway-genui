@@ -57,15 +57,24 @@ describe("BenefitSearchRequestSchema", () => {
     expect(parsed.profile.employmentStatus).toBe("unknown");
   });
 
-  it("accepts persona and per-request score weight overrides", () => {
+  it("accepts the built-in persona ids and per-request score weight overrides", () => {
     const parsed = BenefitSearchRequestSchema.parse({
       query: "서울 청년 월세",
-      profile: { persona: "housing", interests: ["housing"] },
+      profile: { persona: "newlywed_family", interests: ["housing"] },
       weights: { region: 3, category: 2, household: 1 }
     });
 
-    expect(parsed.profile.persona).toBe("housing");
+    expect(parsed.profile.persona).toBe("newlywed_family");
     expect(parsed.weights.region).toBe(3);
+  });
+
+  it("rejects the superseded persona ids", () => {
+    expect(() =>
+      BenefitSearchRequestSchema.parse({
+        query: "서울 청년 월세",
+        profile: { persona: "housing" }
+      })
+    ).toThrow();
   });
 
   it("requires a non-empty query", () => {
