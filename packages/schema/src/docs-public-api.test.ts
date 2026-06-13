@@ -10,6 +10,9 @@ function readDoc(path: string) {
 }
 
 describe('public API documentation', () => {
+  const nonEligibilityDisclaimer =
+    'Recommendations are candidates, not eligibility decisions, and users must verify final requirements on the official source.';
+
   it('documents published packages, stable APIs, embed setup, and 0.x semver policy', () => {
     const readme = readDoc('README.md');
     const contributing = readDoc('CONTRIBUTING.md');
@@ -33,5 +36,35 @@ describe('public API documentation', () => {
   it('records the G-2 OSS library milestone in roadmap and changelog', () => {
     expect(readDoc('docs/roadmap.md')).toContain('G-2');
     expect(readDoc('CHANGELOG.md')).toContain('G-2');
+  });
+
+  it('keeps non-eligibility disclaimer wording identical across docs and tool caveats', () => {
+    const docs = [
+      'README.md',
+      'packages/schema/README.md',
+      'packages/core/README.md',
+      'packages/mcp-server/README.md',
+      'docs/host-prompts.md',
+      'packages/core/src/tool-service.ts'
+    ];
+
+    for (const doc of docs) {
+      expect(readDoc(doc), `${doc} should contain the shared disclaimer`).toContain(
+        nonEligibilityDisclaimer
+      );
+    }
+  });
+
+  it('documents public data source attribution and security response windows', () => {
+    const dataSources = readDoc('docs/data-sources.md');
+    const security = readDoc('SECURITY.md');
+
+    expect(dataSources).toContain('서울 청년 월세 지원');
+    expect(dataSources).toContain('국가장학금');
+    expect(dataSources).toContain('국민취업지원제도');
+    expect(dataSources).toContain('공공누리');
+    expect(dataSources).toContain('sourceUrl');
+    expect(security).toContain('within 72 hours');
+    expect(security).toContain('within 14 days');
   });
 });

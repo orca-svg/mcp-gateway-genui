@@ -4,6 +4,8 @@ stdio MCP server for the mcp-gen-ui gateway public-benefit discovery tools.
 
 The server registers deterministic tools for benefit search, benefit detail, checklist generation, application guidance, and snapshot change logs. It delegates all host conversation and LLM orchestration to the MCP client.
 
+Recommendations are candidates, not eligibility decisions, and users must verify final requirements on the official source.
+
 ## Install
 
 ```bash

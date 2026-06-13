@@ -2,6 +2,8 @@
 
 Zod schemas for the mcp-gen-ui gateway public-benefit contracts, plus generated JSON Schema files for non-TypeScript clients.
 
+Recommendations are candidates, not eligibility decisions, and users must verify final requirements on the official source.
+
 ## Install
 
 ```bash

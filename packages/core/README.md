@@ -18,4 +18,6 @@ import { BenefitToolService, FixtureBenefitRepository } from '@mcp-gen-ui/core';
 const service = new BenefitToolService(new FixtureBenefitRepository());
 ```
 
-The package is LLM-free and keeps recommendations as candidates, not definitive eligibility decisions.
+The package is LLM-free.
+
+Recommendations are candidates, not eligibility decisions, and users must verify final requirements on the official source.
