@@ -8,6 +8,21 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- G-3 persona-weighted recommendation scoring:
+  - `@mcp-gen-ui/schema` and `@mcp-gen-ui/core` now expose scored benefit
+    summaries with `score` and `scoreBreakdown` fields.
+  - Recommendation inputs support `profile.persona` and per-request `weights`
+    so hosts can tune ranking for housing, employment, youth, family, and
+    accessibility-oriented searches.
+  - Benefit records support `householdTypes` matching for household-aware
+    candidate ranking.
+
+- G-3 deadline-aware discovery:
+  - Benefit records support `applicationDeadline` timestamps.
+  - `@mcp-gen-ui/core` and `@mcp-gen-ui/mcp-server` expose
+    `getUpcomingDeadlines`, returning deadline-bearing candidate benefits sorted
+    by soonest application deadline.
+
 - G-2 OSS-library readiness documentation:
   - Root README Public API section covering the three published packages,
     stable embedder contracts (`BenefitRepository`, `BenefitToolService`,
