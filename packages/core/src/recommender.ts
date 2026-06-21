@@ -9,6 +9,14 @@ import type {
   ScoreBreakdownItem,
   UserProfile
 } from "@mcp-gen-ui/schema";
+import {
+  defaultPersonaRegistry,
+  resolveWeights,
+  type PersonaRegistry,
+  type ResolvedRecommendationWeights
+} from "./personas.js";
+
+export { defaultPersonaRegistry, resolveWeights } from "./personas.js";
 
 /**
  * Rule-based, LLM-free recommender.
@@ -20,12 +28,17 @@ import type {
  */
 export function recommendBenefits(
   benefits: BenefitRecord[],
-  request: BenefitSearchRequest
+  request: BenefitSearchRequest,
+  options: { personas?: PersonaRegistry } = {}
 ): BenefitSummary[] {
   const queryTerms = tokenize(
     `${request.query} ${request.profile.interests.join(" ")}`
   );
-  const scorePlan = buildScorePlan(request.profile.persona, request.weights ?? {});
+  const scorePlan = buildScorePlan(
+    request.profile.persona,
+    request.weights ?? {},
+    options.personas ?? defaultPersonaRegistry
+  );
 
   return benefits
     .map((benefit) => classifyBenefit(benefit, request.profile, queryTerms, scorePlan))
@@ -184,45 +197,19 @@ const SCORE_DIMENSIONS: RecommendationScoreDimension[] = [
   "query"
 ];
 
-const DEFAULT_WEIGHTS: Required<RecommendationWeights> = {
-  region: 1,
-  age: 1,
-  student: 1,
-  employment: 1,
-  household: 1,
-  category: 1,
-  query: 1
-};
-
-const PERSONA_WEIGHTS: Record<RecommendationPersona, Partial<RecommendationWeights>> = {
-  default: {},
-  student: { student: 3, age: 2, category: 2 },
-  job_seeker: { employment: 3, age: 1.5, query: 2 },
-  housing: { region: 3, household: 2, category: 2 },
-  family: { household: 3, category: 2, region: 1.5 }
-};
-
 type ScorePlan = {
   dimensions: RecommendationScoreDimension[];
-  weights: Required<RecommendationWeights>;
+  weights: ResolvedRecommendationWeights;
 };
 
 function buildScorePlan(
   persona: RecommendationPersona | undefined,
-  overrides: RecommendationWeights
+  overrides: RecommendationWeights,
+  registry: PersonaRegistry
 ): ScorePlan {
-  const weights = {
-    ...DEFAULT_WEIGHTS,
-    ...(persona ? PERSONA_WEIGHTS[persona] : {}),
-    ...overrides
-  };
-  const overrideDimensions = SCORE_DIMENSIONS.filter(
-    (dimension) => overrides[dimension] !== undefined
-  );
-
   return {
-    dimensions: overrideDimensions.length > 0 ? overrideDimensions : SCORE_DIMENSIONS,
-    weights
+    dimensions: SCORE_DIMENSIONS,
+    weights: resolveWeights(persona ?? "general", overrides, registry)
   };
 }
 

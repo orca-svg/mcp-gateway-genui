@@ -5,7 +5,7 @@ import type { BenefitRecord } from "@mcp-gen-ui/schema";
 import { describe, expect, it } from "vitest";
 import type { BenefitRepository } from "./repository.js";
 import { SnapshotStore } from "./sqlite-store.js";
-import { BenefitToolService } from "./tool-service.js";
+import { BenefitToolService, NON_ELIGIBILITY_DISCLAIMER } from "./tool-service.js";
 
 const arbitraryBenefit: BenefitRecord = {
   id: "busan-caregiver-training",
@@ -102,7 +102,7 @@ describe("custom BenefitRepository extension contract", () => {
       "residence-confirmation",
       "job-seeker-registration"
     ]);
-    expect(checklist.caveats[0]).toContain("확정 자격 판정");
+    expect(checklist.caveats[0]).toBe(NON_ELIGIBILITY_DISCLAIMER);
     expect(guide.steps.every((step) => step.requiresUserAction)).toBe(true);
     expect(guide.safetyNotice).toContain("대신 수행하지 않습니다");
     expect(changeLog.entries.some((entry) => entry.changeType === "created")).toBe(

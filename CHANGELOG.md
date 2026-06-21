@@ -8,6 +8,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- G-4 compliance documentation:
+  - Public data source attribution matrix covering supported fixture sources,
+    provider names, dataset identifiers, 공공누리/공공데이터 attribution notes,
+    and `sourceUrl` expectations.
+  - Shared non-eligibility disclaimer wording across README files, host prompt
+    docs, and checklist tool caveats.
+  - Security response policy with acknowledgement and remediation-plan windows.
+
 - G-3 persona-weighted recommendation scoring:
   - `@mcp-gen-ui/schema` and `@mcp-gen-ui/core` now expose scored benefit
     summaries with `score` and `scoreBreakdown` fields.

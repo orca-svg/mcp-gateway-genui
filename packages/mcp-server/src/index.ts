@@ -41,6 +41,13 @@ server.tool(
 );
 
 server.tool(
+  "listPersonas",
+  "List built-in recommendation persona presets and their scoring weights for host selection.",
+  {},
+  async () => jsonToolResult({ personas: await tools.listPersonas() })
+);
+
+server.tool(
   "buildChecklist",
   "Build a preparation checklist for a benefit application.",
   { benefitId: z.string().min(1) },

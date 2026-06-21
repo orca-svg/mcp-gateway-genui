@@ -17,7 +17,7 @@ Include:
 - Steps to reproduce
 - Affected versions
 
-We aim to respond within 72 hours and will coordinate a disclosure timeline with you.
+We aim to acknowledge valid reports within 72 hours. For valid reports, we aim to provide a fix, mitigation, or written remediation plan within 14 days, and will coordinate a disclosure timeline with you.
 
 ## Domain-specific safety
 
