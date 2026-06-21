@@ -73,7 +73,7 @@ export class CachingBenefitRepository implements BenefitRepository {
   }
 }
 
-export interface YouthCenterRepositoryOptions {
+interface PublicBenefitRepositoryOptions {
   apiKey?: string;
   endpoint?: string;
   pageSize?: number;
@@ -82,9 +82,66 @@ export interface YouthCenterRepositoryOptions {
   logger?: { warn: (message: string) => void };
 }
 
-type YouthCenterItem = Record<string, unknown>;
+export interface YouthCenterRepositoryOptions extends PublicBenefitRepositoryOptions {}
+export interface BokjiroRepositoryOptions extends PublicBenefitRepositoryOptions {}
+export interface SubsidyRepositoryOptions extends PublicBenefitRepositoryOptions {}
 
-export class YouthCenterRepository implements BenefitRepository {
+type SourceItem = Record<string, unknown>;
+
+type AdapterSource = "youth-center" | "bokjiro" | "subsidy24";
+
+interface AdapterConfig {
+  source: AdapterSource;
+  envName: string;
+  defaultEndpoint: string;
+  sourceLabel: string;
+  defaultProvider: string;
+  queryParams: (apiKey: string, pageSize: number) => Record<string, string>;
+}
+
+const YOUTH_CENTER_CONFIG: AdapterConfig = {
+  source: "youth-center",
+  envName: "YOUTH_CENTER_API_KEY",
+  defaultEndpoint: "https://apis.data.go.kr/1051000/youthPlcyList/getYouthPlcyList",
+  sourceLabel: "YouthCenter",
+  defaultProvider: "한국고용정보원",
+  queryParams: (apiKey, pageSize) => ({
+    serviceKey: apiKey,
+    pageNo: "1",
+    numOfRows: String(pageSize),
+    type: "json"
+  })
+};
+
+const BOKJIRO_CONFIG: AdapterConfig = {
+  source: "bokjiro",
+  envName: "BOKJIRO_API_KEY",
+  defaultEndpoint: "https://apis.data.go.kr/B554287/NationalWelfareInformationsV001/NationalWelfarelistV001",
+  sourceLabel: "Bokjiro",
+  defaultProvider: "한국사회보장정보원",
+  queryParams: (apiKey, pageSize) => ({
+    serviceKey: apiKey,
+    pageNo: "1",
+    numOfRows: String(pageSize),
+    resultType: "json"
+  })
+};
+
+const SUBSIDY_CONFIG: AdapterConfig = {
+  source: "subsidy24",
+  envName: "SUBSIDY24_API_KEY",
+  defaultEndpoint: "https://apis.data.go.kr/1741000/gov24SubsidyList/getGov24SubsidyList",
+  sourceLabel: "Subsidy24",
+  defaultProvider: "행정안전부",
+  queryParams: (apiKey, pageSize) => ({
+    serviceKey: apiKey,
+    pageNo: "1",
+    numOfRows: String(pageSize),
+    type: "json"
+  })
+};
+
+abstract class PublicBenefitApiRepository implements BenefitRepository {
   private readonly apiKey?: string;
   private readonly endpoint: string;
   private readonly pageSize: number;
@@ -92,9 +149,12 @@ export class YouthCenterRepository implements BenefitRepository {
   private readonly now: () => Date;
   private readonly logger: { warn: (message: string) => void };
 
-  constructor(options: YouthCenterRepositoryOptions = {}) {
-    this.apiKey = options.apiKey ?? process.env.YOUTH_CENTER_API_KEY;
-    this.endpoint = options.endpoint ?? "https://apis.data.go.kr/1051000/youthPlcyList/getYouthPlcyList";
+  protected constructor(
+    private readonly config: AdapterConfig,
+    options: PublicBenefitRepositoryOptions = {}
+  ) {
+    this.apiKey = options.apiKey ?? process.env[config.envName];
+    this.endpoint = options.endpoint ?? config.defaultEndpoint;
     this.pageSize = options.pageSize ?? 100;
     this.fetchImpl = options.fetch ?? globalThis.fetch;
     this.now = options.now ?? (() => new Date());
@@ -103,29 +163,28 @@ export class YouthCenterRepository implements BenefitRepository {
 
   async search(): Promise<BenefitRecord[]> {
     if (!this.apiKey) {
-      this.logger.warn("YOUTH_CENTER_API_KEY is not configured; returning no YouthCenter benefits.");
+      this.logger.warn(`${this.config.envName} is not configured; returning no ${this.config.sourceLabel} benefits.`);
       return [];
     }
 
     try {
       const url = new URL(this.endpoint);
-      url.searchParams.set("serviceKey", this.apiKey);
-      url.searchParams.set("pageNo", "1");
-      url.searchParams.set("numOfRows", String(this.pageSize));
-      url.searchParams.set("type", "json");
+      for (const [key, value] of Object.entries(this.config.queryParams(this.apiKey, this.pageSize))) {
+        url.searchParams.set(key, value);
+      }
 
       const response = await this.fetchImpl(url);
       if (!response.ok) {
-        this.logger.warn(`YouthCenter API request failed with HTTP ${response.status}.`);
+        this.logger.warn(`${this.config.sourceLabel} API request failed with HTTP ${response.status}.`);
         return [];
       }
 
       const payload = (await response.json()) as unknown;
-      return extractYouthPolicyItems(payload)
+      return extractBenefitItems(payload)
         .map((item) => this.toBenefitRecord(item))
         .filter((record): record is BenefitRecord => record !== undefined);
     } catch (error) {
-      this.logger.warn(`YouthCenter API request failed: ${messageFrom(error)}`);
+      this.logger.warn(`${this.config.sourceLabel} API request failed: ${messageFrom(error)}`);
       return [];
     }
   }
@@ -134,56 +193,105 @@ export class YouthCenterRepository implements BenefitRepository {
     return (await this.search()).find((record) => record.id === id);
   }
 
-  private toBenefitRecord(item: YouthCenterItem): BenefitRecord | undefined {
-    const policyNumber = firstText(item, ["plcyNo", "policyNo", "bizId", "id"]);
-    const title = firstText(item, ["plcyNm", "policyName", "title"]);
-    if (!policyNumber || !title) return undefined;
+  private toBenefitRecord(item: SourceItem): BenefitRecord | undefined {
+    const sourceId = firstText(item, [
+      "plcyNo",
+      "policyNo",
+      "bizId",
+      "id",
+      "servId",
+      "serviceId",
+      "svcId",
+      "wlfareInfoId",
+      "bizSeCd"
+    ]);
+    const title = firstText(item, [
+      "plcyNm",
+      "policyName",
+      "title",
+      "servNm",
+      "serviceName",
+      "svcNm",
+      "wlfareInfoNm",
+      "serviceNm",
+      "jrsdDptAlltNm"
+    ]);
+    if (!sourceId || !title) return undefined;
 
-    const provider = firstText(item, ["sprvsnInstCdNm", "operInstCdNm", "provider", "insttNm"]) ?? "한국고용정보원";
-    const summary = firstText(item, ["plcyExplnCn", "sprtCn", "summary", "plcyCn"]) ?? title;
-    const target = firstText(item, ["sprtTrgtCn", "target", "ageInfo", "earnEtcCn"]) ?? "청년 정책 대상자";
+    const provider =
+      firstText(item, [
+        "sprvsnInstCdNm",
+        "operInstCdNm",
+        "provider",
+        "insttNm",
+        "jurMnofNm",
+        "jrsdDptNm",
+        "inqOrgNm",
+        "orgNm",
+        "serviceProvider"
+      ]) ?? this.config.defaultProvider;
+    const summary = firstText(item, ["plcyExplnCn", "sprtCn", "summary", "plcyCn", "servDgst", "svcPpo", "servicePurpose", "wlfareInfoReldCn"]) ?? title;
+    const target = firstText(item, ["sprtTrgtCn", "target", "ageInfo", "earnEtcCn", "trgterIndvdl", "slctCritCn", "supportTarget", "svcPpo"]) ?? "공공서비스 대상자";
     const sourceUrl = normalizeUrl(
-      firstText(item, ["refUrlAddr1", "refUrlAddr2", "sourceUrl", "plcyUrlAddr"]),
-      `https://www.youthcenter.go.kr/youngPlcyUnif/youngPlcyUnifDtl.do?bizId=${encodeURIComponent(policyNumber)}`
+      firstText(item, ["refUrlAddr1", "refUrlAddr2", "sourceUrl", "plcyUrlAddr", "servDtlLink", "serviceUrl", "dtlUrl", "onlineUrl"]),
+      fallbackSourceUrl(this.config.source, sourceId)
     );
-    const applicationUrl = normalizeUrl(firstText(item, ["aplyUrlAddr", "applicationUrl"]));
+    const applicationUrl = normalizeUrl(firstText(item, ["aplyUrlAddr", "applicationUrl", "onlineUrl", "svcUrl", "servDtlLink"]));
 
     const parsed = BenefitRecordSchema.safeParse({
-      id: `youth-center:${policyNumber}`,
+      id: `${this.config.source}:${sourceId}`,
       title,
       provider,
       category: deriveCategory(item),
       summary,
       target,
-      eligibility: splitList(firstText(item, ["sprtTrgtCn", "earnEtcCn", "ageInfo"])),
-      applicationPeriod: firstText(item, ["aplyYmd", "aplyPrd", "applicationPeriod"]),
+      eligibility: splitList(firstText(item, ["sprtTrgtCn", "earnEtcCn", "ageInfo", "trgterIndvdl", "slctCritCn", "supportTarget"])),
+      applicationPeriod: firstText(item, ["aplyYmd", "aplyPrd", "applicationPeriod", "reqstBeginEndDe", "svcAvailPrd", "applicationDueDate"]),
       applicationDeadline: deriveApplicationDeadline(item),
-      documents: splitList(firstText(item, ["sbmsnDcmntCn", "documents"])).map((label, index) => ({
+      documents: splitList(firstText(item, ["sbmsnDcmntCn", "documents", "requiredDocuments", " 구비서류", "pprsUpdtCn"])).map((label, index) => ({
         id: `document-${index + 1}`,
         label,
         required: true,
-        source: "youth-center"
+        source: this.config.source
       })),
-      applicationMethods: splitList(firstText(item, ["aplyMthdCn", "applicationMethods"])),
+      applicationMethods: splitList(firstText(item, ["aplyMthdCn", "applicationMethods", "reqstMthPapers", "serviceUseMethod", "svcUseMthd"])),
       applicationUrl,
       sourceUrl,
       lastFetchedAt: this.now().toISOString(),
       evidence: [],
-      searchableText: [summary, target, firstText(item, ["plcyKywdNm", "keywords"]), provider]
+      searchableText: [summary, target, firstText(item, ["plcyKywdNm", "keywords", "svcPpo", "servDgst"]), provider]
         .filter(Boolean)
         .join(" "),
       regionTags: deriveRegions(item),
       ageRanges: deriveAgeRanges(item),
       householdTypes: deriveHouseholdTypes(item),
-      studentOnly: containsAny(item, ["대학생", "재학생", "학생"]),
+      studentOnly: containsAny(item, ["대학생", "재학생", "학생", "장학"]),
       employmentStatuses: deriveEmploymentStatuses(item)
     });
 
     if (!parsed.success) {
-      this.logger.warn(`YouthCenter policy ${policyNumber} did not match BenefitRecordSchema.`);
+      this.logger.warn(`${this.config.sourceLabel} policy ${sourceId} did not match BenefitRecordSchema.`);
       return undefined;
     }
     return parsed.data;
+  }
+}
+
+export class YouthCenterRepository extends PublicBenefitApiRepository {
+  constructor(options: YouthCenterRepositoryOptions = {}) {
+    super(YOUTH_CENTER_CONFIG, options);
+  }
+}
+
+export class BokjiroRepository extends PublicBenefitApiRepository {
+  constructor(options: BokjiroRepositoryOptions = {}) {
+    super(BOKJIRO_CONFIG, options);
+  }
+}
+
+export class SubsidyRepository extends PublicBenefitApiRepository {
+  constructor(options: SubsidyRepositoryOptions = {}) {
+    super(SUBSIDY_CONFIG, options);
   }
 }
 
@@ -191,27 +299,54 @@ function dedupeKey(record: BenefitRecord): string {
   return `${record.sourceUrl || "no-source"}::${record.id}`.split("::")[0] || record.id;
 }
 
-function extractYouthPolicyItems(payload: unknown): YouthCenterItem[] {
+function extractBenefitItems(payload: unknown): SourceItem[] {
   if (!payload || typeof payload !== "object") return [];
   const root = payload as Record<string, unknown>;
-  const candidates = [
-    root.result,
-    root.response,
-    root.body,
-    root
-  ].filter((candidate): candidate is Record<string, unknown> => Boolean(candidate) && typeof candidate === "object") as Record<string, unknown>[];
+  const directKeys = [
+    "youthPolicyList",
+    "youthPlcyList",
+    "servList",
+    "serviceList",
+    "wlfareInfoList",
+    "subsidyList",
+    "items",
+    "item",
+    "data",
+    "list"
+  ];
 
-  for (const candidate of candidates) {
-    for (const key of ["youthPolicyList", "youthPlcyList", "items", "item"]) {
-      const value = candidate[key];
-      if (Array.isArray(value)) return value.filter(isRecord);
-      if (isRecord(value)) return [value];
+  const stack: unknown[] = [root.result, root.response, root.body, root];
+  const seen = new Set<unknown>();
+
+  while (stack.length > 0) {
+    const candidate = stack.shift();
+    if (!candidate || typeof candidate !== "object" || seen.has(candidate)) continue;
+    seen.add(candidate);
+
+    if (Array.isArray(candidate)) {
+      const records = candidate.filter(isRecord);
+      if (records.length > 0) return records;
+      continue;
     }
+
+    const record = candidate as Record<string, unknown>;
+    for (const key of directKeys) {
+      const value = record[key];
+      if (Array.isArray(value)) return value.filter(isRecord);
+      if (isRecord(value)) {
+        const nested = directKeys.map((nestedKey) => value[nestedKey]).find((nestedValue) => Array.isArray(nestedValue));
+        if (Array.isArray(nested)) return nested.filter(isRecord);
+        stack.push(value);
+      }
+    }
+
+    stack.push(...Object.values(record).filter((value) => value && typeof value === "object"));
   }
+
   return [];
 }
 
-function firstText(item: YouthCenterItem, keys: string[]): string | undefined {
+function firstText(item: SourceItem, keys: string[]): string | undefined {
   for (const key of keys) {
     const value = item[key];
     if (typeof value === "string" && value.trim()) return value.trim();
@@ -238,15 +373,37 @@ function normalizeUrl(value: string | undefined, fallback?: string): string | un
   }
 }
 
-function deriveRegions(item: YouthCenterItem): string[] {
-  const text = joinedText(item, ["zipCd", "region", "rgonNm", "sprvsnInstCdNm", "plcyExplnCn"]);
+function fallbackSourceUrl(source: AdapterSource, id: string): string {
+  if (source === "youth-center") {
+    return `https://www.youthcenter.go.kr/youngPlcyUnif/youngPlcyUnifDtl.do?bizId=${encodeURIComponent(id)}`;
+  }
+  if (source === "bokjiro") {
+    return `https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=${encodeURIComponent(id)}`;
+  }
+  return `https://www.gov.kr/portal/rcvfvrSvc/dtlEx/${encodeURIComponent(id)}`;
+}
+
+function deriveRegions(item: SourceItem): string[] {
+  const text = joinedText(item, [
+    "zipCd",
+    "region",
+    "rgonNm",
+    "sprvsnInstCdNm",
+    "plcyExplnCn",
+    "servDgst",
+    "svcPpo",
+    "jurMnofNm",
+    "jrsdDptNm",
+    "addr",
+    "localArea"
+  ]);
   const regions = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"];
   return regions.filter((region) => text.includes(region));
 }
 
-function deriveAgeRanges(item: YouthCenterItem): AgeRange[] {
-  const min = Number(firstText(item, ["sprtTrgtMinAge", "minAge"]));
-  const max = Number(firstText(item, ["sprtTrgtMaxAge", "maxAge"]));
+function deriveAgeRanges(item: SourceItem): AgeRange[] {
+  const min = Number(firstText(item, ["sprtTrgtMinAge", "minAge", "ageMin", "trgterAgeBegin"]));
+  const max = Number(firstText(item, ["sprtTrgtMaxAge", "maxAge", "ageMax", "trgterAgeEnd"]));
   const ranges: Array<[AgeRange, number, number]> = [
     ["teen", 13, 19],
     ["twenties", 20, 29],
@@ -263,31 +420,55 @@ function deriveAgeRanges(item: YouthCenterItem): AgeRange[] {
       })
       .map(([range]) => range);
   }
-  const text = joinedText(item, ["ageInfo", "sprtTrgtCn", "plcyExplnCn"]);
-  return ranges.filter(([, start]) => text.includes(`${Math.floor(start / 10) * 10}대`)).map(([range]) => range);
+  const text = joinedText(item, ["ageInfo", "sprtTrgtCn", "plcyExplnCn", "trgterIndvdl", "slctCritCn", "servDgst", "svcPpo"]);
+  const ages = new Set<AgeRange>();
+  for (const [range, start] of ranges) {
+    if (text.includes(`${Math.floor(start / 10) * 10}대`)) ages.add(range);
+  }
+  for (const match of text.matchAll(/(?:만\s*)?(\d{1,3})\s*세/g)) {
+    const age = Number(match[1]);
+    const range = ranges.find(([, start, end]) => age >= start && age <= end)?.[0];
+    if (range && !(range === "teen" && age >= 19)) ages.add(range);
+  }
+  if (text.includes("노인") || text.includes("어르신") || text.includes("고령")) ages.add("sixties_plus");
+  if (text.includes("청년")) {
+    ages.add("twenties");
+    ages.add("thirties");
+  }
+  return [...ages];
 }
 
-function deriveHouseholdTypes(item: YouthCenterItem): HouseholdType[] {
-  const text = joinedText(item, ["earnEtcCn", "sprtTrgtCn", "plcyExplnCn"]);
+function deriveHouseholdTypes(item: SourceItem): HouseholdType[] {
+  const text = joinedText(item, ["earnEtcCn", "sprtTrgtCn", "plcyExplnCn", "trgterIndvdl", "slctCritCn", "supportTarget", "servDgst", "svcPpo"]);
   const types: HouseholdType[] = [];
   if (text.includes("1인") || text.includes("단독")) types.push("single");
-  if (text.includes("부부")) types.push("couple");
-  if (text.includes("가족") || text.includes("가구")) types.push("family");
+  if (text.includes("부부") || text.includes("신혼")) types.push("couple");
+  if (text.includes("가족") || text.includes("가구") || text.includes("아동") || text.includes("양육")) types.push("family");
   if (text.includes("한부모")) types.push("single_parent");
   return [...new Set(types)];
 }
 
-function deriveEmploymentStatuses(item: YouthCenterItem): EmploymentStatus[] {
-  const text = joinedText(item, ["plcyKywdNm", "sprtTrgtCn", "plcyExplnCn", "earnEtcCn"]);
+function deriveEmploymentStatuses(item: SourceItem): EmploymentStatus[] {
+  const text = joinedText(item, ["plcyKywdNm", "sprtTrgtCn", "plcyExplnCn", "earnEtcCn", "trgterIndvdl", "slctCritCn", "supportTarget", "servDgst", "svcPpo"]);
   const statuses: EmploymentStatus[] = [];
-  if (text.includes("미취업") || text.includes("구직") || text.includes("실업")) statuses.push("unemployed");
-  if (text.includes("재직") || text.includes("근로") || text.includes("취업자")) statuses.push("employed");
-  if (text.includes("창업") || text.includes("자영")) statuses.push("self_employed");
+  if (text.includes("미취업") || text.includes("구직") || text.includes("실업") || text.includes("실직")) statuses.push("unemployed");
+  if (text.includes("재직") || text.includes("근로") || text.includes("취업자") || text.includes("직장")) statuses.push("employed");
+  if (text.includes("창업") || text.includes("자영") || text.includes("소상공")) statuses.push("self_employed");
   return [...new Set(statuses)];
 }
 
-function deriveApplicationDeadline(item: YouthCenterItem): string | undefined {
-  const raw = firstText(item, ["aplyYmd", "aplyPrd", "applicationPeriod", "applicationDeadline"]);
+function deriveApplicationDeadline(item: SourceItem): string | undefined {
+  const raw = firstText(item, [
+    "aplyYmd",
+    "aplyPrd",
+    "applicationPeriod",
+    "applicationDeadline",
+    "reqstBeginEndDe",
+    "svcAvailPrd",
+    "applicationDueDate",
+    "dueDate",
+    "reqstEndDe"
+  ]);
   if (!raw) return undefined;
 
   const compactMatches = [...raw.matchAll(/\d{8}/g)].map((match) => match[0]);
@@ -297,9 +478,6 @@ function deriveApplicationDeadline(item: YouthCenterItem): string | undefined {
   const last = [...compactMatches, ...separatedMatches].at(-1);
   if (!last) return undefined;
 
-  // YouthCenter date-only deadlines are Korean local dates. Delegate the KST→UTC
-  // contract (and date validation) to the shared core helper so a single
-  // implementation owns the policy; invalid dates are skipped, not rolled over.
   const isoDate = `${last.slice(0, 4)}-${last.slice(4, 6)}-${last.slice(6, 8)}`;
   try {
     return kstDeadlineToUtc(isoDate);
@@ -308,27 +486,28 @@ function deriveApplicationDeadline(item: YouthCenterItem): string | undefined {
   }
 }
 
-function deriveCategory(item: YouthCenterItem): BenefitCategory {
-  const text = joinedText(item, ["plcyKywdNm", "plcyExplnCn", "sprtCn", "plcyNm"]);
+function deriveCategory(item: SourceItem): BenefitCategory {
+  const text = joinedText(item, ["plcyKywdNm", "plcyExplnCn", "sprtCn", "plcyNm", "servDgst", "svcPpo", "servNm", "svcNm"]);
   if (text.includes("취업") || text.includes("일자리") || text.includes("구직")) return "employment";
   if (text.includes("주거") || text.includes("월세") || text.includes("임대")) return "housing";
   if (text.includes("교육") || text.includes("장학") || text.includes("훈련")) return "education";
-  if (text.includes("건강") || text.includes("의료")) return "health";
-  if (text.includes("가족") || text.includes("출산") || text.includes("육아")) return "family";
+  if (text.includes("건강") || text.includes("의료") || text.includes("돌봄")) return "health";
+  if (text.includes("가족") || text.includes("출산") || text.includes("육아") || text.includes("양육") || text.includes("아동")) return "family";
   if (text.includes("청년")) return "youth";
+  if (deriveRegions(item).length > 0) return "local";
   return "other";
 }
 
-function containsAny(item: YouthCenterItem, needles: string[]): boolean {
+function containsAny(item: SourceItem, needles: string[]): boolean {
   const text = joinedText(item, Object.keys(item));
   return needles.some((needle) => text.includes(needle));
 }
 
-function joinedText(item: YouthCenterItem, keys: string[]): string {
+function joinedText(item: SourceItem, keys: string[]): string {
   return keys.map((key) => firstText(item, [key]) ?? "").join(" ");
 }
 
-function isRecord(value: unknown): value is YouthCenterItem {
+function isRecord(value: unknown): value is SourceItem {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 

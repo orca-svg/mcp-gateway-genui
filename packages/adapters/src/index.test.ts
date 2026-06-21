@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { BenefitRecordSchema, type BenefitRecord } from "@mcp-gen-ui/schema";
 import {
+  BokjiroRepository,
   CachingBenefitRepository,
   CompositeBenefitRepository,
+  SubsidyRepository,
   YouthCenterRepository
 } from "./index.js";
 import type { BenefitRepository } from "@mcp-gen-ui/core";
@@ -87,6 +89,135 @@ describe("CachingBenefitRepository", () => {
     await repository.getById("cached");
     await repository.getById("cached");
     expect(backing.searches).toBe(2);
+  });
+});
+
+describe("public benefit API repositories", () => {
+  const recordedBokjiroResponse = {
+    response: {
+      body: {
+        items: {
+          item: [
+            {
+              servId: "WLF00004660",
+              servNm: "서울형 긴급복지 지원",
+              jurMnofNm: "서울특별시",
+              servDgst: "서울 위기가구에 생계·의료비를 지원합니다.",
+              trgterIndvdl: "서울 거주 1인 가구 및 가족 위기가구",
+              slctCritCn: "소득 감소 또는 실직으로 생계가 곤란한 가구",
+              reqstBeginEndDe: "2026.01.01 ~ 2026.11.30",
+              reqstMthPapers: "방문 신청",
+              pprsUpdtCn: "신분증<br/>소득 확인서",
+              servDtlLink: "https://www.bokjiro.go.kr/policy/WLF00004660"
+            }
+          ]
+        }
+      }
+    }
+  };
+
+  const recordedSubsidyResponse = {
+    response: {
+      body: {
+        items: [
+          {
+            svcId: "GOV123456",
+            svcNm: "부산 청년 월세 지원",
+            jrsdDptNm: "부산광역시",
+            svcPpo: "부산 거주 청년과 대학생에게 월세를 지원합니다.",
+            supportTarget: "만 19세 이상 34세 이하 미취업 청년 1인 가구",
+            applicationDueDate: "2026-10-15",
+            serviceUseMethod: "정부24 온라인 신청",
+            onlineUrl: "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/GOV123456",
+            requiredDocuments: "주민등록등본, 임대차계약서"
+          }
+        ]
+      }
+    }
+  };
+
+  it("maps recorded 복지로 responses into valid BenefitRecords with scoring fields", async () => {
+    const repository = new BokjiroRepository({
+      apiKey: "runtime-key-only",
+      fetch: vi.fn(async () => new Response(JSON.stringify(recordedBokjiroResponse), { status: 200 })),
+      now: () => new Date("2026-06-09T00:00:00.000Z")
+    });
+
+    const records = await repository.search();
+
+    expect(records).toHaveLength(1);
+    expect(BenefitRecordSchema.safeParse(records[0]).success).toBe(true);
+    expect(records[0]).toMatchObject({
+      id: "bokjiro:WLF00004660",
+      title: "서울형 긴급복지 지원",
+      provider: "서울특별시",
+      category: "health",
+      applicationDeadline: "2026-11-30T14:59:59.000Z",
+      regionTags: ["서울"],
+      householdTypes: ["single", "family"],
+      employmentStatuses: ["unemployed"],
+      sourceUrl: "https://www.bokjiro.go.kr/policy/WLF00004660"
+    });
+    expect(records[0].documents.map((document) => document.label)).toEqual(["신분증", "소득 확인서"]);
+  });
+
+  it("maps recorded 보조금24 responses and composes with 복지로 using source URL dedupe", async () => {
+    const bokjiro = new BokjiroRepository({
+      apiKey: "runtime-key-only",
+      fetch: vi.fn(async () => new Response(JSON.stringify(recordedBokjiroResponse), { status: 200 })),
+      now: () => new Date("2026-06-09T00:00:00.000Z")
+    });
+    const subsidy = new SubsidyRepository({
+      apiKey: "runtime-key-only",
+      fetch: vi.fn(async () => new Response(JSON.stringify(recordedSubsidyResponse), { status: 200 })),
+      now: () => new Date("2026-06-09T00:00:00.000Z")
+    });
+    const duplicateSubsidy = new SubsidyRepository({
+      apiKey: "runtime-key-only",
+      fetch: vi.fn(async () => new Response(JSON.stringify(recordedSubsidyResponse), { status: 200 })),
+      now: () => new Date("2026-06-09T00:00:00.000Z")
+    });
+
+    const records = await new CompositeBenefitRepository([bokjiro, subsidy, duplicateSubsidy]).search();
+
+    expect(records).toHaveLength(2);
+    const subsidyRecord = records.find((record) => record.id === "subsidy24:GOV123456");
+    expect(subsidyRecord).toMatchObject({
+      title: "부산 청년 월세 지원",
+      provider: "부산광역시",
+      category: "housing",
+      applicationDeadline: "2026-10-15T14:59:59.000Z",
+      regionTags: ["부산"],
+      ageRanges: ["twenties", "thirties"],
+      householdTypes: ["single", "family"],
+      studentOnly: true,
+      employmentStatuses: ["unemployed"],
+      applicationUrl: "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/GOV123456",
+      sourceUrl: "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/GOV123456"
+    });
+    expect(BenefitRecordSchema.safeParse(subsidyRecord).success).toBe(true);
+  });
+
+  it("returns an empty list and warns when 복지로 has no runtime API key", async () => {
+    const warn = vi.fn();
+    const fetch = vi.fn();
+    const repository = new BokjiroRepository({ apiKey: "", fetch, logger: { warn } });
+
+    await expect(repository.search()).resolves.toEqual([]);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("BOKJIRO_API_KEY"));
+  });
+
+  it("returns an empty list and warns when 보조금24 live API call fails", async () => {
+    const warn = vi.fn();
+    const repository = new SubsidyRepository({
+      apiKey: "runtime-key-only",
+      fetch: vi.fn(async () => new Response("Service unavailable", { status: 503 })),
+      logger: { warn }
+    });
+
+    await expect(repository.search()).resolves.toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("503"));
   });
 });
 
