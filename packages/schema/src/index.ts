@@ -50,11 +50,12 @@ export const HouseholdTypeSchema = z.enum([
 ]);
 
 export const RecommendationPersonaSchema = z.enum([
-  "student",
-  "job_seeker",
-  "housing",
-  "family",
-  "default"
+  "youth_jobseeker",
+  "university_student",
+  "newlywed_family",
+  "single_parent",
+  "senior",
+  "general"
 ]);
 
 export const RecommendationScoreDimensionSchema = z.enum([

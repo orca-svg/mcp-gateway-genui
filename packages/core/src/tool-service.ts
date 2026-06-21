@@ -17,6 +17,16 @@ import {
 import type { BenefitRepository } from "./repository.js";
 import { recommendBenefits } from "./recommender.js";
 import type { SnapshotStore } from "./sqlite-store.js";
+import {
+  defaultPersonaRegistry,
+  listPersonaPresets,
+  type PersonaPreset,
+  type PersonaRegistry
+} from "./personas.js";
+
+export type BenefitToolServiceOptions = {
+  personas?: PersonaRegistry;
+};
 
 export const NON_ELIGIBILITY_DISCLAIMER =
   "Recommendations are candidates, not eligibility decisions, and users must verify final requirements on the official source.";
@@ -28,15 +38,24 @@ export const NON_ELIGIBILITY_DISCLAIMER =
  * shared Zod contracts.
  */
 export class BenefitToolService {
+  private readonly personas: PersonaRegistry;
+
   constructor(
     private readonly repository: BenefitRepository,
-    private readonly snapshots?: SnapshotStore
-  ) {}
+    private readonly snapshots?: SnapshotStore,
+    options: BenefitToolServiceOptions = {}
+  ) {
+    this.personas = options.personas ?? defaultPersonaRegistry;
+  }
+
+  async listPersonas(): Promise<PersonaPreset[]> {
+    return listPersonaPresets(this.personas);
+  }
 
   async searchBenefits(input: unknown): Promise<BenefitSearchResponse> {
     const request = BenefitSearchRequestSchema.parse(input);
     const benefits = await this.repository.search();
-    const results = recommendBenefits(benefits, request);
+    const results = recommendBenefits(benefits, request, { personas: this.personas });
     this.recordSnapshots(benefits);
 
     return BenefitSearchResponseSchema.parse({
@@ -67,8 +86,8 @@ export class BenefitToolService {
     const recommended = recommendBenefits(benefits, {
       query: "혜택 지원 신청 마감",
       profile: request.profile,
-      weights: {}
-    });
+      weights: { query: 0 }
+    }, { personas: this.personas });
     const recommendationById = new Map(recommended.map((summary) => [summary.id, summary]));
 
     const results = benefits

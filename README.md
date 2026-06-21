@@ -43,6 +43,7 @@ Host (Claude / any MCP host)
 | --- | --- |
 | `@mcp-gen-ui/schema` | Zod schemas as the single source of truth; exports JSON Schema. |
 | `@mcp-gen-ui/core` | Repository, rule-based recommender, SQLite snapshot/change-log, plugin consistency rules, transport-neutral `BenefitToolService`. |
+| `@mcp-gen-ui/adapters` | Composite/cache repository wrappers and live Korean public-benefit data adapters. |
 | `@mcp-gen-ui/mcp-server` | stdio MCP server registering the gateway tools. |
 | `@mcp-gen-ui/demo-ui` | Vite + React renderer; maps fixture domain JSON through an A2UI adapter. |
 
@@ -55,6 +56,7 @@ gateway without taking on the demo app or repository internals:
 | --- | --- |
 | `@mcp-gen-ui/schema` | Zod schemas and generated JSON Schema types that define the tool input/output contracts. |
 | `@mcp-gen-ui/core` | Stable embedder APIs: `BenefitRepository`, `BenefitToolService`, `SnapshotStore`, and the candidate-framed recommendation/checklist helpers they compose. |
+| `@mcp-gen-ui/adapters` | Optional `BenefitRepository` implementations for fan-in, TTL caching, and live 온통청년 public-benefit data. |
 | `@mcp-gen-ui/mcp-server` | The stdio MCP server binary that exposes the gateway tools. |
 
 `fixtureBenefits` is exported as example data for tests, demos, and local
@@ -92,6 +94,7 @@ changelog and migration notes where practical.
 | Tool | Input | Output |
 | --- | --- | --- |
 | `searchBenefits` | `{ query, profile }` | Ranked benefit candidates with evidence. |
+| `listPersonas` | `{}` | Built-in persona presets and scoring weights for host selection. |
 | `getBenefitDetail` | `{ id }` | Structured benefit detail. |
 | `getUpcomingDeadlines` | `{ profile?, withinDays? }` | Deadline-bearing benefit candidates sorted by soonest application deadline. |
 | `buildChecklist` | `{ benefitId }` | Document checklist with a non-eligibility caveat. |

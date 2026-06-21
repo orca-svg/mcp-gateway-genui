@@ -1,13 +1,66 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BenefitRecord } from "@mcp-gen-ui/schema";
+import { kstDeadlineToUtc } from "./deadlines.js";
 import { FixtureBenefitRepository } from "./repository.js";
 import { SnapshotStore } from "./sqlite-store.js";
 import { BenefitToolService, NON_ELIGIBILITY_DISCLAIMER } from "./tool-service.js";
 
 describe("BenefitToolService", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("lists injectable persona presets for host selection", async () => {
+    const service = new BenefitToolService(new FixtureBenefitRepository(), undefined, {
+      personas: {
+        custom: {
+          id: "custom",
+          description: "Custom embedder persona",
+          weights: {
+            region: 1,
+            age: 1,
+            student: 1,
+            employment: 1,
+            household: 1,
+            category: 2,
+            query: 0
+          }
+        }
+      }
+    });
+
+    await expect(service.listPersonas()).resolves.toEqual([
+      {
+        id: "custom",
+        description: "Custom embedder persona",
+        weights: {
+          region: 1,
+          age: 1,
+          student: 1,
+          employment: 1,
+          household: 1,
+          category: 2,
+          query: 0
+        }
+      }
+    ]);
+  });
+
+  it("scores upcoming deadlines without the synthetic query dimension", async () => {
+    const service = new BenefitToolService(
+      new FixtureBenefitRepository([deadlineBenefit("deadline", daysFromNow(5))])
+    );
+
+    const response = await service.getUpcomingDeadlines({ profile: {}, withinDays: 30 });
+
+    expect(response.results[0]?.scoreBreakdown).toContainEqual(
+      expect.objectContaining({ dimension: "query", weight: 0, contribution: 0 })
+    );
+  });
+
   it("groups fixture-backed benefit results by recommendation status", async () => {
     const service = new BenefitToolService(new FixtureBenefitRepository());
 
@@ -117,6 +170,22 @@ describe("BenefitToolService", () => {
       response.results.every((benefit) => benefit.scoreBreakdown.length > 0)
     ).toBe(true);
   });
+
+  it("keeps KST-authored deadlines inside the window through the end of the KST day", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-14T14:59:59.000Z"));
+    const kstDeadline = kstDeadlineToUtc("2026-07-15");
+    const benefits = [deadlineBenefit("kst-deadline", kstDeadline, { regionTags: ["서울"] })];
+    const service = new BenefitToolService(new FixtureBenefitRepository(benefits));
+
+    const response = await service.getUpcomingDeadlines({
+      profile: { region: "서울" },
+      withinDays: 1
+    });
+
+    expect(response.results.map((benefit) => benefit.id)).toEqual(["kst-deadline"]);
+    expect(response.results[0]?.applicationDeadline).toBe("2026-07-15T14:59:59.000Z");
+  });
 });
 
 function daysFromNow(days: number): string {
@@ -151,6 +220,7 @@ function deadlineBenefit(
     ageRanges: [],
     studentOnly: false,
     employmentStatuses: [],
+    householdTypes: [],
     ...overrides
   };
 }
