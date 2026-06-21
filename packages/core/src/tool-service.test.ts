@@ -8,6 +8,54 @@ import { SnapshotStore } from "./sqlite-store.js";
 import { BenefitToolService } from "./tool-service.js";
 
 describe("BenefitToolService", () => {
+  it("lists injectable persona presets for host selection", async () => {
+    const service = new BenefitToolService(new FixtureBenefitRepository(), undefined, {
+      personas: {
+        custom: {
+          id: "custom",
+          description: "Custom embedder persona",
+          weights: {
+            region: 1,
+            age: 1,
+            student: 1,
+            employment: 1,
+            household: 1,
+            category: 2,
+            query: 0
+          }
+        }
+      }
+    });
+
+    await expect(service.listPersonas()).resolves.toEqual([
+      {
+        id: "custom",
+        description: "Custom embedder persona",
+        weights: {
+          region: 1,
+          age: 1,
+          student: 1,
+          employment: 1,
+          household: 1,
+          category: 2,
+          query: 0
+        }
+      }
+    ]);
+  });
+
+  it("scores upcoming deadlines without the synthetic query dimension", async () => {
+    const service = new BenefitToolService(
+      new FixtureBenefitRepository([deadlineBenefit("deadline", daysFromNow(5))])
+    );
+
+    const response = await service.getUpcomingDeadlines({ profile: {}, withinDays: 30 });
+
+    expect(response.results[0]?.scoreBreakdown).toContainEqual(
+      expect.objectContaining({ dimension: "query", weight: 0, contribution: 0 })
+    );
+  });
+
   it("groups fixture-backed benefit results by recommendation status", async () => {
     const service = new BenefitToolService(new FixtureBenefitRepository());
 
