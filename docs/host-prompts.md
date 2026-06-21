@@ -22,8 +22,10 @@ Do not claim that the user has applied, submitted, logged in, or completed ident
 
 | Tool | Input | Purpose |
 | --- | --- | --- |
-| `searchBenefits` | `{ query, profile }` | Rank benefit candidates from non-identifying conditions. |
+| `searchBenefits` | `{ query, profile, weights? }` | Rank benefit candidates from non-identifying conditions and return `score` / `scoreBreakdown` explanations. |
+| `listPersonas` | `{}` | List built-in persona presets and weights for host-side selection. |
 | `getBenefitDetail` | `{ id }` | Structured detail for one benefit. |
+| `getUpcomingDeadlines` | `{ profile?, withinDays? }` | List upcoming application deadlines with the same score contract as search results. |
 | `buildChecklist` | `{ benefitId }` | Preparation checklist with a non-eligibility caveat. |
 | `getApplicationGuide` | `{ benefitId }` | User-action-only application steps. |
 | `getChangeLog` | `{ entityId? }` | Snapshot / change-log entries. |

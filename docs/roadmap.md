@@ -22,16 +22,16 @@
 - [x] Document the pre-1.0 semver policy: 0.x minor releases may break public
   APIs, while patch releases should remain backward-compatible.
 
-## G-3 (in flight — capability wave)
+## G-3 (capability wave)
 
-Tracked by the issue pipeline; status as of 2026-06-10:
+Tracked by the issue pipeline; status as of 2026-06-21:
 
 - [x] Persona-weighted scoring with hard-blocker safety gate (#10 / #18)
 - [x] Structured `applicationDeadline` + `getUpcomingDeadlines` tool (#11 / #19)
-- [ ] Built-in persona presets + `listPersonas` tool (#13)
+- [x] Built-in persona presets + `listPersonas` tool (#13 / #30)
 - [ ] Adapter framework + Composite/Caching + 온통청년 live adapter (#12)
-- [ ] `applicationDeadline` timezone policy + shared KST→UTC helper (#20)
-- [ ] Demo UI renders scores/personas/deadlines + `docs/personas.md` (#16)
+- [x] `applicationDeadline` timezone policy + shared KST→UTC helper (#20 / #31)
+- [x] Demo UI renders scores/personas/deadlines + `docs/personas.md` (#16)
 - [ ] Changesets + CHANGELOG entries for the G-3 features (#22)
 
 ## G-4 (public 0.x — operational trust)

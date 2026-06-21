@@ -1,8 +1,19 @@
-import { benefitSearchToA2UI, type A2UIBlock } from "./a2ui";
-import { demoBenefitDetail, demoSearchResponse } from "./demo-data";
+import type { RecommendationWeights, ScoreBreakdownItem } from "@mcp-gen-ui/schema";
+import { benefitSearchToA2UI, formatDeadline, type A2UIBlock } from "./a2ui";
+import {
+  demoBenefitDetail,
+  demoPersonas,
+  demoSearchResponse,
+  demoUpcomingDeadlines
+} from "./demo-data";
 import "./styles.css";
 
-const blocks = benefitSearchToA2UI(demoSearchResponse, demoBenefitDetail);
+const blocks = benefitSearchToA2UI(
+  demoSearchResponse,
+  demoBenefitDetail,
+  demoPersonas,
+  demoUpcomingDeadlines
+);
 
 export function App() {
   return (
@@ -34,6 +45,31 @@ function BlockRenderer({ block }: { block: A2UIBlock }) {
     return <h2 className="section-title">{block.title}</h2>;
   }
 
+  if (block.type === "persona-selector") {
+    return (
+      <article className="panel persona-panel">
+        <div className="card-head">
+          <h3>{block.title}</h3>
+          <span className="badge">listPersonas fixture</span>
+        </div>
+        <div className="persona-options" role="listbox" aria-label="페르소나 선택">
+          {block.personas.map((persona) => (
+            <button
+              key={persona.id}
+              type="button"
+              className={persona.id === block.activePersona ? "persona active" : "persona"}
+              aria-pressed={persona.id === block.activePersona}
+            >
+              <strong>{persona.label}</strong>
+              <span>{persona.description}</span>
+              <small>{formatWeights(persona.weights)}</small>
+            </button>
+          ))}
+        </div>
+      </article>
+    );
+  }
+
   if (block.type === "benefit-card") {
     return (
       <article className={`benefit-card ${block.status}`}>
@@ -44,6 +80,7 @@ function BlockRenderer({ block }: { block: A2UIBlock }) {
           </div>
           <span className="badge">{statusLabel(block.status)}</span>
         </div>
+        <ScoreMeter score={block.score} breakdown={block.scoreBreakdown} />
         <p>{block.summary}</p>
         <ul>
           {block.reasons.map((reason) => (
@@ -51,6 +88,26 @@ function BlockRenderer({ block }: { block: A2UIBlock }) {
           ))}
           {block.missingInfo.map((item) => (
             <li key={item}>확인 필요: {item}</li>
+          ))}
+        </ul>
+      </article>
+    );
+  }
+
+  if (block.type === "deadlines") {
+    return (
+      <article className="panel deadlines-panel">
+        <h3>{block.title}</h3>
+        <ul className="deadline-list">
+          {block.items.map((item) => (
+            <li key={item.id}>
+              <div>
+                <strong>{item.title}</strong>
+                <span>{item.provider}</span>
+                <small>마감: {formatDeadline(item.deadline)}</small>
+              </div>
+              <ScoreMeter score={item.score} breakdown={item.scoreBreakdown} compact />
+            </li>
           ))}
         </ul>
       </article>
@@ -93,8 +150,61 @@ function BlockRenderer({ block }: { block: A2UIBlock }) {
   return <aside className="notice">{block.text}</aside>;
 }
 
+function ScoreMeter({
+  score,
+  breakdown,
+  compact = false
+}: {
+  score: number;
+  breakdown: ScoreBreakdownItem[];
+  compact?: boolean;
+}) {
+  const percentage = Math.round(score * 100);
+
+  return (
+    <div className={compact ? "score-meter compact" : "score-meter"}>
+      <div className="score-row">
+        <span>추천 점수</span>
+        <strong>{percentage}점</strong>
+      </div>
+      <div className="score-track" aria-label={`추천 점수 ${percentage}점`}>
+        <span style={{ width: `${percentage}%` }} />
+      </div>
+      {!compact && (
+        <dl className="score-breakdown">
+          {breakdown.map((item) => (
+            <div key={`${item.dimension}-${item.explanation}`}>
+              <dt>{dimensionLabel(item.dimension)}</dt>
+              <dd>
+                {item.explanation} (신호 {item.signal}, 가중치 {item.weight})
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
 function statusLabel(status: string): string {
   if (status === "candidate") return "후보";
   if (status === "needs_more_info") return "확인 필요";
   return "부적합";
+}
+
+function dimensionLabel(dimension: ScoreBreakdownItem["dimension"]): string {
+  const labels: Record<ScoreBreakdownItem["dimension"], string> = {
+    region: "지역",
+    age: "연령",
+    student: "학생",
+    employment: "고용",
+    household: "가구",
+    category: "분야",
+    query: "검색어"
+  };
+  return labels[dimension];
+}
+
+function formatWeights(weights: Required<RecommendationWeights>): string {
+  return `학생 ${weights.student} · 연령 ${weights.age} · 분야 ${weights.category}`;
 }

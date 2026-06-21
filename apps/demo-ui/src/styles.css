@@ -102,6 +102,11 @@ h1 {
   padding: 18px;
 }
 
+.persona-panel,
+.deadlines-panel {
+  grid-column: 1 / -1;
+}
+
 .benefit-card.candidate {
   border-top: 4px solid #0f766e;
 }
@@ -117,6 +122,90 @@ h1 {
   gap: 12px;
 }
 
+.persona-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.persona {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+  color: inherit;
+  text-align: left;
+}
+
+.persona.active {
+  border-color: #0f766e;
+  background: #ecfdf5;
+  box-shadow: inset 0 0 0 1px #0f766e;
+}
+
+.persona span,
+.persona small,
+.deadline-list span,
+.deadline-list small {
+  color: #64748b;
+}
+
+.score-meter {
+  margin: 14px 0;
+}
+
+.score-meter.compact {
+  min-width: 180px;
+  margin: 0;
+}
+
+.score-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+}
+
+.score-track {
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.score-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0f766e, #14b8a6);
+}
+
+.score-breakdown {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.score-breakdown div {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 8px;
+}
+
+.score-breakdown dt {
+  color: #0f766e;
+  font-weight: 800;
+}
+
+.score-breakdown dd {
+  margin: 0;
+  color: #475569;
+}
+
+.deadline-list,
 .checklist,
 .steps,
 .benefit-card ul {
@@ -124,9 +213,28 @@ h1 {
   padding-left: 18px;
 }
 
+.deadline-list,
 .checklist {
   padding-left: 0;
   list-style: none;
+}
+
+.deadline-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid #e2e8f0;
+  padding: 14px 0;
+}
+
+.deadline-list li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.deadline-list div {
+  display: grid;
+  gap: 4px;
 }
 
 .checklist li {
@@ -166,7 +274,16 @@ h1 {
   }
 
   .search-panel,
-  .grid {
+  .grid,
+  .persona-options {
     grid-template-columns: 1fr;
+  }
+
+  .deadline-list li {
+    flex-direction: column;
+  }
+
+  .score-meter.compact {
+    min-width: 0;
   }
 }
