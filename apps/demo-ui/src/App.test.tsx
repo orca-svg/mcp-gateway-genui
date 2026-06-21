@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { App } from "./App";
 
@@ -62,5 +62,40 @@ describe("App", () => {
 
     expect(screen.getByRole("region", { name: "다가오는 신청 마감" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "추천 페르소나" })).toBeInTheDocument();
+  });
+
+  it("switches scenarios and recomputes the rendered results", () => {
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "서울 청년 월세 지원" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "청년 구직자" }));
+
+    expect(screen.getByRole("heading", { name: "국민취업지원제도" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "서울 청년 월세 지원" })).not.toBeInTheDocument();
+  });
+
+  it("shows data sources with their response status", () => {
+    render(<App />);
+
+    const sources = screen.getByRole("region", { name: "데이터 출처" });
+    expect(within(sources).getByText("서울특별시")).toBeInTheDocument();
+    expect(within(sources).getByText("캐시")).toBeInTheDocument();
+  });
+
+  it("shows the gateway tool trace with durations", () => {
+    render(<App />);
+
+    const trace = screen.getByRole("region", { name: "도구 실행 내역" });
+    expect(within(trace).getByText("searchBenefits")).toBeInTheDocument();
+    expect(within(trace).getByText("42ms")).toBeInTheDocument();
+  });
+
+  it("reports a partial run when a source falls back", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "청년 구직자" }));
+
+    expect(screen.getByText("일부 출처 대체(폴백)")).toBeInTheDocument();
   });
 });

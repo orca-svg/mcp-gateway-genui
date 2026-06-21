@@ -1,18 +1,17 @@
-import type {
-  BenefitDetail,
-  BenefitSearchResponse,
-  UpcomingDeadlinesResponse
-} from "@mcp-gen-ui/schema";
+import type { DemoScenario, DemoSource, DemoToolTrace } from "./demo-data";
 
 /**
  * domain JSON -> A2UI adapter.
  *
  * Keeping this mapping separate from the renderer means the same MCP responses
  * can drive different UI front-ends; the React demo is just one renderer of
- * these transport-neutral blocks.
+ * these transport-neutral blocks. A `DemoScenario` bundles one full gateway run.
  */
+export type RunStatus = "success" | "partial" | "failed";
+
 export type A2UIBlock =
-  | { type: "section"; id: string; title: string; tone?: "default" | "muted" }
+  | { type: "section"; id: string; title: string }
+  | { type: "run-status"; id: string; query: string; status: RunStatus }
   | {
       type: "benefit-card";
       id: string;
@@ -43,6 +42,8 @@ export type A2UIBlock =
       title: string;
       items: { id: string; description: string; active: boolean }[];
     }
+  | { type: "source-list"; id: string; title: string; items: DemoSource[] }
+  | { type: "tool-trace"; id: string; title: string; items: DemoToolTrace[] }
   | { type: "notice"; id: string; text: string };
 
 /** End-of-KST-day deadlines are stored as `…T14:59:59Z`; the UTC date matches the KST date. */
@@ -50,20 +51,25 @@ function kstDateLabel(isoDeadline: string): string {
   return isoDeadline.slice(0, 10);
 }
 
-export function benefitSearchToA2UI(
-  response: BenefitSearchResponse,
-  detail: BenefitDetail,
-  deadlines?: UpcomingDeadlinesResponse,
-  personas?: { id: string; description: string }[]
-): A2UIBlock[] {
+export function scenarioToA2UI(scenario: DemoScenario): A2UIBlock[] {
+  const { search, detail, deadlines, personas, sources, traces } = scenario;
+  const status: RunStatus = sources.some((source) => source.status === "fallback")
+    ? "partial"
+    : "success";
+
   return [
     {
       type: "section",
       id: "query-summary",
-      title: `"${response.query}" 검색 결과`,
-      tone: "default"
+      title: `"${search.query}" 검색 결과`
     },
-    ...response.results.map(
+    {
+      type: "run-status",
+      id: "run-status",
+      query: search.query,
+      status
+    },
+    ...search.results.map(
       (result): A2UIBlock => ({
         type: "benefit-card",
         id: result.id,
@@ -96,7 +102,7 @@ export function benefitSearchToA2UI(
         { title: "공식 경로 이동", description: detail.applicationUrl ?? detail.sourceUrl }
       ]
     },
-    ...(deadlines && deadlines.results.length > 0
+    ...(deadlines.results.length > 0
       ? [
           {
             type: "deadlines" as const,
@@ -110,7 +116,7 @@ export function benefitSearchToA2UI(
           }
         ]
       : []),
-    ...(personas && personas.length > 0
+    ...(personas.length > 0
       ? [
           {
             type: "personas" as const,
@@ -119,11 +125,23 @@ export function benefitSearchToA2UI(
             items: personas.map((persona) => ({
               id: persona.id,
               description: persona.description,
-              active: persona.id === response.profile.persona
+              active: persona.id === search.profile.persona
             }))
           }
         ]
       : []),
+    {
+      type: "source-list",
+      id: "data-sources",
+      title: "데이터 출처",
+      items: sources
+    },
+    {
+      type: "tool-trace",
+      id: "tool-trace",
+      title: "도구 실행 내역",
+      items: traces
+    },
     {
       type: "notice",
       id: "safety",

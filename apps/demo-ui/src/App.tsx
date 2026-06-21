@@ -1,20 +1,14 @@
-import { benefitSearchToA2UI, type A2UIBlock } from "./a2ui";
-import {
-  demoBenefitDetail,
-  demoPersonas,
-  demoSearchResponse,
-  demoUpcomingDeadlines
-} from "./demo-data";
+import { useMemo, useState } from "react";
+import { scenarioToA2UI, type A2UIBlock, type RunStatus } from "./a2ui";
+import { demoScenarios } from "./demo-data";
+import type { DemoSourceStatus } from "./demo-data";
 import "./styles.css";
 
-const blocks = benefitSearchToA2UI(
-  demoSearchResponse,
-  demoBenefitDetail,
-  demoUpcomingDeadlines,
-  demoPersonas
-);
-
 export function App() {
+  const [activeId, setActiveId] = useState(demoScenarios[0].id);
+  const scenario = demoScenarios.find((item) => item.id === activeId) ?? demoScenarios[0];
+  const blocks = useMemo(() => scenarioToA2UI(scenario), [scenario]);
+
   return (
     <main className="shell">
       <header className="topbar">
@@ -26,9 +20,23 @@ export function App() {
       </header>
 
       <section className="search-panel" aria-label="자연어 조건 입력">
-        <input value="서울 거주 대학생인데 받을 수 있는 지원 있어?" readOnly />
+        <input value={scenario.search.query} readOnly />
         <button type="button">검색</button>
       </section>
+
+      <nav className="scenarios" aria-label="시나리오 선택">
+        {demoScenarios.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={item.id === activeId ? "active" : undefined}
+            aria-pressed={item.id === activeId}
+            onClick={() => setActiveId(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
 
       <section className="grid" aria-label="생성된 UI">
         {blocks.map((block) => (
@@ -42,6 +50,15 @@ export function App() {
 function BlockRenderer({ block }: { block: A2UIBlock }) {
   if (block.type === "section") {
     return <h2 className="section-title">{block.title}</h2>;
+  }
+
+  if (block.type === "run-status") {
+    return (
+      <aside className={`run-status ${block.status}`} aria-label="실행 상태">
+        <span className="run-dot" aria-hidden="true" />
+        <span>{runStatusLabel(block.status)}</span>
+      </aside>
+    );
   }
 
   if (block.type === "benefit-card") {
@@ -120,6 +137,44 @@ function BlockRenderer({ block }: { block: A2UIBlock }) {
     );
   }
 
+  if (block.type === "source-list") {
+    return (
+      <section className="panel" aria-label={block.title}>
+        <h3>{block.title}</h3>
+        <p className="caption">공공 데이터 출처와 응답 상태입니다.</p>
+        <ul className="sources">
+          {block.items.map((item) => (
+            <li key={item.id}>
+              <div className="source-name">
+                <strong>{item.provider}</strong>
+                <span>{item.dataset}</span>
+              </div>
+              <em className={`src-status ${item.status}`}>{sourceStatusLabel(item.status)}</em>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
+  if (block.type === "tool-trace") {
+    return (
+      <section className="panel" aria-label={block.title}>
+        <h3>{block.title}</h3>
+        <p className="caption">게이트웨이가 호출한 MCP 도구와 응답 시간입니다.</p>
+        <ul className="traces">
+          {block.items.map((item) => (
+            <li key={item.tool}>
+              <code>{item.tool}</code>
+              <em className={`src-status ${item.status}`}>{sourceStatusLabel(item.status)}</em>
+              <strong>{item.durationMs}ms</strong>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
   if (block.type === "steps") {
     return (
       <article className="panel">
@@ -143,4 +198,16 @@ function statusLabel(status: string): string {
   if (status === "candidate") return "후보";
   if (status === "needs_more_info") return "확인 필요";
   return "부적합";
+}
+
+function runStatusLabel(status: RunStatus): string {
+  if (status === "success") return "정상 응답";
+  if (status === "partial") return "일부 출처 대체(폴백)";
+  return "응답 실패";
+}
+
+function sourceStatusLabel(status: DemoSourceStatus): string {
+  if (status === "ok") return "정상";
+  if (status === "cached") return "캐시";
+  return "폴백";
 }
