@@ -6,7 +6,7 @@ import type { BenefitRecord } from "@mcp-gen-ui/schema";
 import { kstDeadlineToUtc } from "./deadlines.js";
 import { FixtureBenefitRepository } from "./repository.js";
 import { SnapshotStore } from "./sqlite-store.js";
-import { BenefitToolService } from "./tool-service.js";
+import { BenefitToolService, NON_ELIGIBILITY_DISCLAIMER } from "./tool-service.js";
 
 describe("BenefitToolService", () => {
   afterEach(() => {
@@ -94,7 +94,7 @@ describe("BenefitToolService", () => {
     const checklist = await service.buildChecklist("seoul-youth-rent-support");
 
     expect(checklist.items.length).toBeGreaterThan(0);
-    expect(checklist.caveats[0]).toContain("확정 자격 판정이 아니");
+    expect(checklist.caveats[0]).toBe(NON_ELIGIBILITY_DISCLAIMER);
   });
 
   it("returns user-action-only application guidance", async () => {

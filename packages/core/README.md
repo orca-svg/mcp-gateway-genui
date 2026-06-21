@@ -27,4 +27,6 @@ default. Use `resolveWeights(persona, overrides)` to merge request-level weight
 overrides on top of a preset, or pass `{ personas }` to `BenefitToolService` to
 replace the registry for an embedder-specific deployment.
 
-The package is LLM-free and keeps recommendations as candidates, not definitive eligibility decisions.
+The package is LLM-free.
+
+Recommendations are candidates, not eligibility decisions, and users must verify final requirements on the official source.

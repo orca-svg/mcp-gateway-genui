@@ -24,6 +24,8 @@ JSON contracts so any MCP host can:
 It never stores sensitive identifiers, never claims definitive eligibility, and
 never automates login or submission.
 
+Recommendations are candidates, not eligibility decisions, and users must verify final requirements on the official source.
+
 ## Architecture
 
 ```
@@ -144,6 +146,7 @@ See `docs/host-prompts.md` for the recommended host prompt and an example flow.
 
 ## Documentation
 
+- [`docs/data-sources.md`](docs/data-sources.md) — official fixture source attribution, license notes, and source URL coverage.
 - [`docs/prd.md`](docs/prd.md) — product spec and scope.
 - [`docs/host-prompts.md`](docs/host-prompts.md) — recommended host prompt + tools.
 - [`docs/extending.md`](docs/extending.md) — bring your own data source and other extension points.

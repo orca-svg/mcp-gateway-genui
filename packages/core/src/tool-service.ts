@@ -28,6 +28,9 @@ export type BenefitToolServiceOptions = {
   personas?: PersonaRegistry;
 };
 
+export const NON_ELIGIBILITY_DISCLAIMER =
+  "Recommendations are candidates, not eligibility decisions, and users must verify final requirements on the official source.";
+
 /**
  * Transport-neutral entry point for the gateway tools. The MCP server (or any
  * other transport) calls these methods; there is no LLM here — orchestration is
@@ -131,9 +134,7 @@ export class BenefitToolService {
     return ChecklistResponseSchema.parse({
       benefitId,
       items: benefit.documents,
-      caveats: [
-        "이 체크리스트는 확정 자격 판정이 아니며, 실제 공고와 신청 화면에서 최종 조건을 확인해야 합니다."
-      ]
+      caveats: [NON_ELIGIBILITY_DISCLAIMER]
     });
   }
 
