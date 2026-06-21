@@ -23,4 +23,24 @@ describe("App", () => {
 
     expect(screen.getByText("임대차계약서")).toBeInTheDocument();
   });
+
+  it("renders the recommendation fit score on benefit cards", () => {
+    render(<App />);
+
+    expect(screen.getByText("적합도 92%")).toBeInTheDocument();
+  });
+
+  it("renders an upcoming deadlines section with KST dates", () => {
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "다가오는 신청 마감" })).toBeInTheDocument();
+    expect(screen.getByText("마감일 2026-12-31")).toBeInTheDocument();
+  });
+
+  it("renders the available recommendation personas", () => {
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "추천 페르소나" })).toBeInTheDocument();
+    expect(screen.getByText("youth_jobseeker")).toBeInTheDocument();
+  });
 });

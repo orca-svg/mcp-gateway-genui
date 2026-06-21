@@ -152,6 +152,48 @@ h1 {
   color: #475569;
 }
 
+.score {
+  margin: 0 0 6px;
+  color: #0f766e;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.deadlines,
+.personas {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.deadlines li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.deadlines strong {
+  margin-left: auto;
+  color: #b45309;
+  font-size: 0.8rem;
+}
+
+.personas li {
+  margin-bottom: 10px;
+}
+
+.personas strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.85rem;
+}
+
+.personas span {
+  color: #475569;
+  font-size: 0.85rem;
+}
+
 .notice {
   grid-column: 1 / -1;
   background: #eef6f4;

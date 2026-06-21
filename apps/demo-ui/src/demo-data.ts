@@ -1,4 +1,8 @@
-import type { BenefitDetail, BenefitSearchResponse } from "@mcp-gen-ui/schema";
+import type {
+  BenefitDetail,
+  BenefitSearchResponse,
+  UpcomingDeadlinesResponse
+} from "@mcp-gen-ui/schema";
 
 /**
  * Fixture domain JSON the demo renders. In a real host these objects come back
@@ -81,4 +85,34 @@ export const demoBenefitDetail: BenefitDetail = {
   sourceUrl: "https://www.gov.kr/portal/service/serviceInfo/611000000119",
   lastFetchedAt: "2026-05-20T00:00:00.000Z",
   evidence: []
+};
+
+export const demoPersonas: { id: string; description: string }[] = [
+  { id: "youth_jobseeker", description: "취업 적합도·연령·검색 의도를 우선하는 청년 구직자" },
+  { id: "university_student", description: "학생 자격과 교육 지원을 우선하는 대학생" },
+  { id: "newlywed_family", description: "가구 구성과 주거를 우선하는 신혼·가족" },
+  { id: "single_parent", description: "가구 지원과 생활 안정을 우선하는 한부모" },
+  { id: "senior", description: "연령과 건강·복지를 우선하는 어르신" },
+  { id: "general", description: "모든 점수 차원 가중치가 동일한 기본값" }
+];
+
+export const demoUpcomingDeadlines: UpcomingDeadlinesResponse = {
+  profile: demoSearchResponse.profile,
+  withinDays: 30,
+  generatedAt: "2026-05-20T00:00:00.000Z",
+  results: [
+    {
+      id: "seoul-youth-rent-support",
+      title: "서울 청년 월세 지원",
+      provider: "서울특별시",
+      category: "housing",
+      summary: "서울 거주 청년의 주거비 부담을 줄이기 위한 월세 지원 사업입니다.",
+      status: "candidate",
+      score: 0.92,
+      scoreBreakdown: [],
+      reasons: [],
+      missingInfo: [],
+      applicationDeadline: "2026-12-31T14:59:59.000Z"
+    }
+  ]
 };

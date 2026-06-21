@@ -1,8 +1,18 @@
 import { benefitSearchToA2UI, type A2UIBlock } from "./a2ui";
-import { demoBenefitDetail, demoSearchResponse } from "./demo-data";
+import {
+  demoBenefitDetail,
+  demoPersonas,
+  demoSearchResponse,
+  demoUpcomingDeadlines
+} from "./demo-data";
 import "./styles.css";
 
-const blocks = benefitSearchToA2UI(demoSearchResponse, demoBenefitDetail);
+const blocks = benefitSearchToA2UI(
+  demoSearchResponse,
+  demoBenefitDetail,
+  demoUpcomingDeadlines,
+  demoPersonas
+);
 
 export function App() {
   return (
@@ -44,6 +54,7 @@ function BlockRenderer({ block }: { block: A2UIBlock }) {
           </div>
           <span className="badge">{statusLabel(block.status)}</span>
         </div>
+        <p className="score">적합도 {Math.round(block.score * 100)}%</p>
         <p>{block.summary}</p>
         <ul>
           {block.reasons.map((reason) => (
@@ -67,6 +78,38 @@ function BlockRenderer({ block }: { block: A2UIBlock }) {
               <input type="checkbox" readOnly />
               <span>{item.label}</span>
               {item.required && <strong>필수</strong>}
+            </li>
+          ))}
+        </ul>
+      </article>
+    );
+  }
+
+  if (block.type === "deadlines") {
+    return (
+      <article className="panel">
+        <h3>{block.title}</h3>
+        <ul className="deadlines">
+          {block.items.map((item) => (
+            <li key={item.id}>
+              <span>{item.title}</span>
+              <strong>마감일 {item.deadline}</strong>
+            </li>
+          ))}
+        </ul>
+      </article>
+    );
+  }
+
+  if (block.type === "personas") {
+    return (
+      <article className="panel">
+        <h3>{block.title}</h3>
+        <ul className="personas">
+          {block.items.map((item) => (
+            <li key={item.id}>
+              <strong>{item.id}</strong>
+              <span>{item.description}</span>
             </li>
           ))}
         </ul>

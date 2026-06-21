@@ -1,4 +1,8 @@
-import type { BenefitDetail, BenefitSearchResponse } from "@mcp-gen-ui/schema";
+import type {
+  BenefitDetail,
+  BenefitSearchResponse,
+  UpcomingDeadlinesResponse
+} from "@mcp-gen-ui/schema";
 
 /**
  * domain JSON -> A2UI adapter.
@@ -16,6 +20,7 @@ export type A2UIBlock =
       provider: string;
       status: string;
       summary: string;
+      score: number;
       reasons: string[];
       missingInfo: string[];
     }
@@ -26,11 +31,30 @@ export type A2UIBlock =
       items: { id: string; label: string; required: boolean }[];
     }
   | { type: "steps"; id: string; title: string; steps: { title: string; description: string }[] }
+  | {
+      type: "deadlines";
+      id: string;
+      title: string;
+      items: { id: string; title: string; deadline: string }[];
+    }
+  | {
+      type: "personas";
+      id: string;
+      title: string;
+      items: { id: string; description: string }[];
+    }
   | { type: "notice"; id: string; text: string };
+
+/** End-of-KST-day deadlines are stored as `…T14:59:59Z`; the UTC date matches the KST date. */
+function kstDateLabel(isoDeadline: string): string {
+  return isoDeadline.slice(0, 10);
+}
 
 export function benefitSearchToA2UI(
   response: BenefitSearchResponse,
-  detail: BenefitDetail
+  detail: BenefitDetail,
+  deadlines?: UpcomingDeadlinesResponse,
+  personas?: { id: string; description: string }[]
 ): A2UIBlock[] {
   return [
     {
@@ -47,6 +71,7 @@ export function benefitSearchToA2UI(
         provider: result.provider,
         status: result.status,
         summary: result.summary,
+        score: result.score,
         reasons: result.reasons,
         missingInfo: result.missingInfo
       })
@@ -71,6 +96,33 @@ export function benefitSearchToA2UI(
         { title: "공식 경로 이동", description: detail.applicationUrl ?? detail.sourceUrl }
       ]
     },
+    ...(deadlines && deadlines.results.length > 0
+      ? [
+          {
+            type: "deadlines" as const,
+            id: "upcoming-deadlines",
+            title: "다가오는 신청 마감",
+            items: deadlines.results.map((result) => ({
+              id: result.id,
+              title: result.title,
+              deadline: kstDateLabel(result.applicationDeadline)
+            }))
+          }
+        ]
+      : []),
+    ...(personas && personas.length > 0
+      ? [
+          {
+            type: "personas" as const,
+            id: "recommendation-personas",
+            title: "추천 페르소나",
+            items: personas.map((persona) => ({
+              id: persona.id,
+              description: persona.description
+            }))
+          }
+        ]
+      : []),
     {
       type: "notice",
       id: "safety",
