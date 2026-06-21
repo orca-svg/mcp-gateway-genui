@@ -148,6 +148,28 @@ describe("YouthCenterRepository", () => {
     ]);
   });
 
+  it("skips invalid application deadline dates instead of rolling them over", async () => {
+    const responseWithInvalidDeadline = {
+      ...recordedResponse,
+      result: {
+        youthPolicyList: [
+          { ...recordedResponse.result.youthPolicyList[0], aplyYmd: "20260101~20261340" }
+        ]
+      }
+    };
+    const repository = new YouthCenterRepository({
+      apiKey: "runtime-key-only",
+      fetch: vi.fn(async () => new Response(JSON.stringify(responseWithInvalidDeadline), { status: 200 })),
+      now: () => new Date("2026-06-09T00:00:00.000Z")
+    });
+
+    const records = await repository.search();
+
+    expect(records).toHaveLength(1);
+    expect(records[0].applicationDeadline).toBeUndefined();
+    expect(BenefitRecordSchema.safeParse(records[0]).success).toBe(true);
+  });
+
   it("returns an empty list and warns when no runtime API key is configured", async () => {
     const warn = vi.fn();
     const fetch = vi.fn();
