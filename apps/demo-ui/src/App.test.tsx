@@ -43,4 +43,24 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "추천 페르소나" })).toBeInTheDocument();
     expect(screen.getByText("youth_jobseeker")).toBeInTheDocument();
   });
+
+  it("marks the persona applied to the current search", () => {
+    render(<App />);
+
+    const activeItem = screen.getByText("university_student").closest("li");
+    expect(activeItem).toHaveTextContent("적용됨");
+  });
+
+  it("clarifies that deadlines are shown in KST", () => {
+    render(<App />);
+
+    expect(screen.getByText(/한국 시간\(KST\)/)).toBeInTheDocument();
+  });
+
+  it("exposes the generated panels as labelled regions", () => {
+    render(<App />);
+
+    expect(screen.getByRole("region", { name: "다가오는 신청 마감" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "추천 페르소나" })).toBeInTheDocument();
+  });
 });

@@ -17,7 +17,8 @@ export const demoSearchResponse: BenefitSearchResponse = {
     studentStatus: "student",
     employmentStatus: "unknown",
     householdType: "unknown",
-    interests: ["housing", "education"]
+    interests: ["housing", "education"],
+    persona: "university_student"
   },
   generatedAt: "2026-05-20T00:00:00.000Z",
   results: [

@@ -41,7 +41,7 @@ export type A2UIBlock =
       type: "personas";
       id: string;
       title: string;
-      items: { id: string; description: string }[];
+      items: { id: string; description: string; active: boolean }[];
     }
   | { type: "notice"; id: string; text: string };
 
@@ -118,7 +118,8 @@ export function benefitSearchToA2UI(
             title: "추천 페르소나",
             items: personas.map((persona) => ({
               id: persona.id,
-              description: persona.description
+              description: persona.description,
+              active: persona.id === response.profile.persona
             }))
           }
         ]

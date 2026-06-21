@@ -87,8 +87,9 @@ function BlockRenderer({ block }: { block: A2UIBlock }) {
 
   if (block.type === "deadlines") {
     return (
-      <article className="panel">
+      <section className="panel" aria-label={block.title}>
         <h3>{block.title}</h3>
+        <p className="caption">마감일은 한국 시간(KST) 기준입니다.</p>
         <ul className="deadlines">
           {block.items.map((item) => (
             <li key={item.id}>
@@ -97,23 +98,25 @@ function BlockRenderer({ block }: { block: A2UIBlock }) {
             </li>
           ))}
         </ul>
-      </article>
+      </section>
     );
   }
 
   if (block.type === "personas") {
     return (
-      <article className="panel">
+      <section className="panel" aria-label={block.title}>
         <h3>{block.title}</h3>
+        <p className="caption">검색 프로필에 적용된 점수 가중치 프리셋입니다.</p>
         <ul className="personas">
           {block.items.map((item) => (
-            <li key={item.id}>
+            <li key={item.id} className={item.active ? "active" : undefined}>
               <strong>{item.id}</strong>
+              {item.active && <em className="applied">적용됨</em>}
               <span>{item.description}</span>
             </li>
           ))}
         </ul>
-      </article>
+      </section>
     );
   }
 
