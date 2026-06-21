@@ -14,6 +14,7 @@
 - [ ] `pnpm typecheck` passes
 - [ ] `pnpm test` passes
 - [ ] Schemas re-exported if contracts changed (`pnpm schemas`)
+- [ ] Changeset included for feature changes affecting published packages (`.changeset/*.md`)
 
 ## Safety checklist (public-benefit domain)
 

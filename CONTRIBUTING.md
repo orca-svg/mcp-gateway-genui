@@ -63,6 +63,10 @@ Do not introduce:
 
 See `docs/git-workflow.md`. Branch from `main`, keep changes scoped, ensure
 `build` / `typecheck` / `test` pass, and fill in the PR template's safety checklist.
+Feature PRs that affect published packages must include a Changesets entry under
+`.changeset/` describing the user-visible change and intended semver bump before
+review; documentation-only and internal-only changes may omit one when they do not
+change package behavior.
 
 ## Code of Conduct
 
