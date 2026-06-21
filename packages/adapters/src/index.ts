@@ -1,4 +1,4 @@
-import type { BenefitRepository } from "@mcp-gen-ui/core";
+import { kstDeadlineToUtc, type BenefitRepository } from "@mcp-gen-ui/core";
 import {
   BenefitRecordSchema,
   type AgeRange,
@@ -297,12 +297,15 @@ function deriveApplicationDeadline(item: YouthCenterItem): string | undefined {
   const last = [...compactMatches, ...separatedMatches].at(-1);
   if (!last) return undefined;
 
-  const year = Number(last.slice(0, 4));
-  const month = Number(last.slice(4, 6));
-  const day = Number(last.slice(6, 8));
-  // YouthCenter date-only deadlines are Korean local dates. Store the end of
-  // that KST day as the UTC Z timestamp required by BenefitRecordSchema.
-  return new Date(Date.UTC(year, month - 1, day, 14, 59, 59)).toISOString();
+  // YouthCenter date-only deadlines are Korean local dates. Delegate the KST→UTC
+  // contract (and date validation) to the shared core helper so a single
+  // implementation owns the policy; invalid dates are skipped, not rolled over.
+  const isoDate = `${last.slice(0, 4)}-${last.slice(4, 6)}-${last.slice(6, 8)}`;
+  try {
+    return kstDeadlineToUtc(isoDate);
+  } catch {
+    return undefined;
+  }
 }
 
 function deriveCategory(item: YouthCenterItem): BenefitCategory {
