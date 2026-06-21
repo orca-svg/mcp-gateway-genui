@@ -1,8 +1,61 @@
 import { describe, expect, it } from "vitest";
-import { recommendBenefits } from "./recommender.js";
+import { defaultPersonaRegistry, recommendBenefits, resolveWeights } from "./recommender.js";
 import { fixtureBenefits } from "./fixtures.js";
 
 describe("recommendBenefits", () => {
+  it("resolves general as uniform weights and merges overrides on top of presets", () => {
+    expect(resolveWeights("general", {})).toEqual({
+      region: 1,
+      age: 1,
+      student: 1,
+      employment: 1,
+      household: 1,
+      category: 1,
+      query: 1
+    });
+
+    expect(resolveWeights("university_student", { query: 0 })).toEqual({
+      ...defaultPersonaRegistry.university_student.weights,
+      query: 0
+    });
+  });
+
+  it("uses request overrides as a merge instead of narrowing the score plan", () => {
+    const [result] = recommendBenefits(
+      [
+        {
+          ...fixtureBenefits[0]!,
+          regionTags: ["서울"],
+          ageRanges: ["twenties"],
+          studentOnly: false,
+          employmentStatuses: []
+        }
+      ],
+      {
+        query: "무관한검색어",
+        profile: {
+          region: "서울",
+          studentStatus: "unknown",
+          employmentStatus: "unknown",
+          householdType: "unknown",
+          interests: []
+        },
+        weights: { region: 2, age: 2 }
+      }
+    );
+
+    expect(result?.scoreBreakdown.map((item) => item.dimension)).toEqual([
+      "region",
+      "age",
+      "student",
+      "employment",
+      "household",
+      "category",
+      "query"
+    ]);
+    expect(result?.score).toBe(0.667);
+  });
+
   it("keeps hard blockers ahead of score weighting", () => {
     const [result] = recommendBenefits(
       [
@@ -54,7 +107,7 @@ describe("recommendBenefits", () => {
       }
     );
 
-    expect(result?.score).toBe(0.75);
+    expect(result?.score).toBe(0.667);
     expect(result?.scoreBreakdown).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ dimension: "region", signal: 1, weight: 2 }),

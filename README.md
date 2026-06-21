@@ -90,6 +90,7 @@ changelog and migration notes where practical.
 | Tool | Input | Output |
 | --- | --- | --- |
 | `searchBenefits` | `{ query, profile }` | Ranked benefit candidates with evidence. |
+| `listPersonas` | `{}` | Built-in persona presets and scoring weights for host selection. |
 | `getBenefitDetail` | `{ id }` | Structured benefit detail. |
 | `getUpcomingDeadlines` | `{ profile?, withinDays? }` | Deadline-bearing benefit candidates sorted by soonest application deadline. |
 | `buildChecklist` | `{ benefitId }` | Document checklist with a non-eligibility caveat. |
