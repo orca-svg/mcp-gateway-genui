@@ -129,14 +129,56 @@ export function App() {
                   </li>
                 ))}
               </ol>
-              <a
-                className="source-link"
-                href={view.prep.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                공식 페이지로 이동 ↗
-              </a>
+              {view.prep.sourceVerified ? (
+                <div className="source-actions">
+                  <a
+                    className="source-link"
+                    href={view.prep.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    공식 페이지로 이동 ↗
+                  </a>
+                  <a
+                    className="source-alt"
+                    href={view.prep.govSearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    정부24 통합검색으로 찾기
+                  </a>
+                </div>
+              ) : (
+                <div className="source-actions">
+                  <p className="source-warn">
+                    원본 서비스 링크가 만료되었을 수 있어 정부 공식 검색을 권합니다.
+                  </p>
+                  <a
+                    className="source-link"
+                    href={view.prep.govSearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    정부24 통합검색 ↗
+                  </a>
+                  <a
+                    className="source-alt source-stale"
+                    href={view.prep.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    원본 링크 열기 (만료 가능)
+                  </a>
+                  <a
+                    className="source-web"
+                    href={view.prep.webSearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    그래도 못 찾으면 웹에서 검색
+                  </a>
+                </div>
+              )}
             </>
           ) : (
             <p>선택한 항목의 상세가 없습니다.</p>

@@ -26,6 +26,14 @@ export type DemoToolTrace = {
   durationMs: number;
 };
 
+/**
+ * Curated link health per benefit id. A real gateway/adapter would verify the
+ * source URL when it fetches the record; the browser demo cannot live-check
+ * external URLs (CORS), so health is recorded here. `stale` = the deep link may
+ * be expired, so the UI leads with a search fallback instead.
+ */
+export type DemoLinkStatus = "verified" | "stale";
+
 export type DemoScenario = {
   id: string;
   label: string;
@@ -36,6 +44,8 @@ export type DemoScenario = {
   personas: { id: string; description: string }[];
   sources: DemoSource[];
   traces: DemoToolTrace[];
+  /** Optional per-benefit link health; absent ids are treated as verified. */
+  linkStatus?: Record<string, DemoLinkStatus>;
 };
 
 export const demoPersonas: { id: string; description: string }[] = [
@@ -312,7 +322,11 @@ export const demoScenarios: DemoScenario[] = [
       { tool: "searchBenefits", status: "ok", durationMs: 42 },
       { tool: "getUpcomingDeadlines", status: "ok", durationMs: 18 },
       { tool: "listPersonas", status: "ok", durationMs: 5 }
-    ]
+    ],
+    linkStatus: {
+      // The gov.kr deep link for this fixture is a deleted service — lead with a search fallback.
+      "seoul-youth-rent-support": "stale"
+    }
   },
   {
     id: "youth-jobseeker",

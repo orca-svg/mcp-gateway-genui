@@ -42,25 +42,38 @@ describe("App", () => {
     expect(within(prep).queryByText("임대차계약서")).not.toBeInTheDocument();
   });
 
-  it("links the selected benefit's prep to its official source", () => {
+  it("leads with the government search and warns when the deep link is stale", () => {
     render(<App />);
 
     const prep = screen.getByRole("region", { name: "신청 준비" });
-    const link = within(prep).getByRole("link", { name: /공식 페이지/ });
-    expect(link).toHaveAttribute(
+    expect(within(prep).getByText(/만료되었을 수 있어/)).toBeInTheDocument();
+
+    // primary fallback is the government (gov.kr) integrated search
+    const primary = within(prep).getByRole("link", { name: /정부24 통합검색/ });
+    expect(primary).toHaveAttribute("href", expect.stringContaining("gov.kr/search"));
+    expect(primary).toHaveAttribute("target", "_blank");
+    expect(primary).toHaveAttribute("rel", expect.stringContaining("noopener"));
+
+    // the original (possibly expired) link is still reachable, but demoted
+    expect(within(prep).getByRole("link", { name: /원본 링크/ })).toHaveAttribute(
       "href",
       "https://www.gov.kr/portal/service/serviceInfo/611000000119"
     );
-    expect(link).toHaveAttribute("target", "_blank");
-    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+
+    // a general web search exists only as the very last resort
+    expect(within(prep).getByRole("link", { name: /웹에서 검색/ })).toHaveAttribute(
+      "href",
+      expect.stringContaining("search.naver.com")
+    );
   });
 
-  it("updates the source link when another card is selected", () => {
+  it("links a verified benefit straight to its official page", () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "국가장학금" }));
 
     const prep = screen.getByRole("region", { name: "신청 준비" });
+    expect(within(prep).queryByText(/만료되었을 수 있어/)).not.toBeInTheDocument();
     expect(within(prep).getByRole("link", { name: /공식 페이지/ })).toHaveAttribute(
       "href",
       "https://www.kosaf.go.kr"

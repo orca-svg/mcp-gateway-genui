@@ -29,6 +29,12 @@ export type PrepVM = {
   deadline?: string;
   /** Official application/source page the user opens to act (applicationUrl, else sourceUrl). */
   sourceUrl: string;
+  /** False when the curated link is stale; the UI then leads with the government fallback. */
+  sourceVerified: boolean;
+  /** Preferred fallback: 정부24(gov.kr) integrated search for the benefit — a government source. */
+  govSearchUrl: string;
+  /** Last-resort fallback: general web search, only when government options do not help. */
+  webSearchUrl: string;
 };
 
 export type ScenarioView = {
@@ -94,7 +100,12 @@ export function scenarioView(
           { title: "공식 경로 이동", description: "아래 공식 페이지에서 최신 공고와 신청 방법을 확인하세요." }
         ],
         deadline: deadline ? kstDateLabel(deadline) : undefined,
-        sourceUrl: detail.applicationUrl ?? detail.sourceUrl
+        sourceUrl: detail.applicationUrl ?? detail.sourceUrl,
+        sourceVerified: scenario.linkStatus?.[selectedId] !== "stale",
+        govSearchUrl: `https://www.gov.kr/search?srhQuery=${encodeURIComponent(detail.title)}`,
+        webSearchUrl: `https://search.naver.com/search.naver?query=${encodeURIComponent(
+          `${detail.title} 신청 방법`
+        )}`
       }
     : null;
 
