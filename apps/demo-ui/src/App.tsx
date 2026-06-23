@@ -1,16 +1,33 @@
 import { useMemo, useState } from "react";
-import { scenarioToA2UI, type A2UIBlock, type RunStatus } from "./a2ui";
-import { demoScenarios } from "./demo-data";
-import type { DemoSourceStatus } from "./demo-data";
+import { scenarioView, type RunStatus } from "./a2ui";
+import { demoScenarios, type DemoSourceStatus } from "./demo-data";
 import "./styles.css";
 
 export function App() {
   const [activeId, setActiveId] = useState(demoScenarios[0].id);
   const scenario = demoScenarios.find((item) => item.id === activeId) ?? demoScenarios[0];
-  const blocks = useMemo(() => scenarioToA2UI(scenario), [scenario]);
+  const [selectedId, setSelectedId] = useState(scenario.search.results[0].id);
+  const [filter, setFilter] = useState("");
+
+  const view = useMemo(
+    () => scenarioView(scenario, selectedId, filter),
+    [scenario, selectedId, filter]
+  );
+
+  const selectScenario = (id: string) => {
+    const next = demoScenarios.find((item) => item.id === id) ?? demoScenarios[0];
+    setActiveId(id);
+    setSelectedId(next.search.results[0].id);
+    setFilter("");
+  };
 
   return (
     <main className="shell">
+      <div className="gov-strip">
+        <span className="korea-mark" aria-hidden="true" />
+        공공 혜택 탐색 GenUI 데모 · MCP-Gen UI Gateway
+      </div>
+
       <header className="topbar">
         <div>
           <p className="eyebrow">MCP-Gen UI Gateway</p>
@@ -19,179 +36,145 @@ export function App() {
         <span className="status">Fixture demo</span>
       </header>
 
-      <section className="search-panel" aria-label="자연어 조건 입력">
-        <input value={scenario.search.query} readOnly />
-        <button type="button">검색</button>
-      </section>
+      <div className="areas">
+        <section className="area input-area" aria-label="입력 및 조건">
+          <h2 className="area-title">입력 · 조건</h2>
+          <div className="search-panel">
+            <input
+              aria-label="검색 조건"
+              value={filter}
+              placeholder={view.query}
+              onChange={(event) => setFilter(event.target.value)}
+            />
+            <button type="button">검색</button>
+          </div>
+          <div className="scenarios" role="group" aria-label="시나리오 선택">
+            {demoScenarios.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={item.id === activeId ? "active" : undefined}
+                aria-pressed={item.id === activeId}
+                onClick={() => selectScenario(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {view.personaId && (
+            <p className="persona-tag">
+              적용 페르소나: <strong>{view.personaId}</strong>
+              {view.personaDescription ? ` — ${view.personaDescription}` : ""}
+            </p>
+          )}
+          <p className={`run-line ${view.runStatus}`}>
+            <span className="run-dot" aria-hidden="true" />
+            {runStatusLabel(view.runStatus)}
+          </p>
+        </section>
 
-      <nav className="scenarios" aria-label="시나리오 선택">
-        {demoScenarios.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={item.id === activeId ? "active" : undefined}
-            aria-pressed={item.id === activeId}
-            onClick={() => setActiveId(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
+        <section className="area results-area" aria-label="추천 결과">
+          <h2 className="area-title">&quot;{view.query}&quot; 추천 결과</h2>
+          <ul className="cards">
+            {view.cards.map((card) => (
+              <li key={card.id}>
+                <button
+                  type="button"
+                  aria-label={card.title}
+                  aria-pressed={card.id === selectedId}
+                  className={`benefit-card ${card.status} ${card.id === selectedId ? "selected" : ""}`}
+                  onClick={() => setSelectedId(card.id)}
+                >
+                  <span className="provider">{card.provider}</span>
+                  <span className="card-title">{card.title}</span>
+                  <span className="badge">{statusLabel(card.status)}</span>
+                  <span className="score">적합도 {Math.round(card.score * 100)}%</span>
+                  <span className="card-summary">{card.summary}</span>
+                </button>
+              </li>
+            ))}
+            {view.cards.length === 0 && (
+              <li className="empty">검색 조건에 맞는 결과가 없습니다.</li>
+            )}
+          </ul>
+        </section>
 
-      <section className="grid" aria-label="생성된 UI">
-        {blocks.map((block) => (
-          <BlockRenderer key={block.id} block={block} />
-        ))}
-      </section>
+        <section className="area prep-area" aria-label="신청 준비">
+          <h2 className="area-title">신청 준비</h2>
+          {view.prep ? (
+            <>
+              <h3 className="prep-title">{view.prep.title}</h3>
+              {view.prep.deadline && (
+                <p className="prep-deadline">
+                  마감일 {view.prep.deadline}
+                  <span className="caption"> · 한국 시간(KST) 기준</span>
+                </p>
+              )}
+              <h4>준비 서류</h4>
+              <ul className="checklist">
+                {view.prep.documents.map((document) => (
+                  <li key={document.id}>
+                    <input type="checkbox" readOnly />
+                    <span>{document.label}</span>
+                    {document.required && <strong>필수</strong>}
+                  </li>
+                ))}
+              </ul>
+              <h4>신청 단계</h4>
+              <ol className="steps">
+                {view.prep.steps.map((step) => (
+                  <li key={step.title}>
+                    <strong>{step.title}</strong>
+                    <span>{step.description}</span>
+                  </li>
+                ))}
+              </ol>
+            </>
+          ) : (
+            <p>선택한 항목의 상세가 없습니다.</p>
+          )}
+        </section>
+      </div>
+
+      <aside className="notice">
+        이 도구는 확정 자격 판정, 로그인, 본인인증, 제출 자동화를 수행하지 않습니다.
+      </aside>
+
+      <details className="transparency">
+        <summary>데이터 출처 · 동작 내역</summary>
+        <div className="transparency-body">
+          <div>
+            <h3>데이터 출처</h3>
+            <ul className="sources">
+              {view.sources.map((source) => (
+                <li key={source.id}>
+                  <div className="source-name">
+                    <strong>{source.provider}</strong>
+                    <span>{source.dataset}</span>
+                  </div>
+                  <em className={`src-status ${source.status}`}>
+                    {sourceStatusLabel(source.status)}
+                  </em>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3>도구 실행 내역</h3>
+            <ul className="traces">
+              {view.traces.map((trace) => (
+                <li key={trace.tool}>
+                  <code>{trace.tool}</code>
+                  <em className={`src-status ${trace.status}`}>{sourceStatusLabel(trace.status)}</em>
+                  <strong>{trace.durationMs}ms</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </details>
     </main>
   );
-}
-
-function BlockRenderer({ block }: { block: A2UIBlock }) {
-  if (block.type === "section") {
-    return <h2 className="section-title">{block.title}</h2>;
-  }
-
-  if (block.type === "run-status") {
-    return (
-      <aside className={`run-status ${block.status}`} aria-label="실행 상태">
-        <span className="run-dot" aria-hidden="true" />
-        <span>{runStatusLabel(block.status)}</span>
-      </aside>
-    );
-  }
-
-  if (block.type === "benefit-card") {
-    return (
-      <article className={`benefit-card ${block.status}`}>
-        <div className="card-head">
-          <div>
-            <p className="provider">{block.provider}</p>
-            <h3>{block.title}</h3>
-          </div>
-          <span className="badge">{statusLabel(block.status)}</span>
-        </div>
-        <p className="score">적합도 {Math.round(block.score * 100)}%</p>
-        <p>{block.summary}</p>
-        <ul>
-          {block.reasons.map((reason) => (
-            <li key={reason}>{reason}</li>
-          ))}
-          {block.missingInfo.map((item) => (
-            <li key={item}>확인 필요: {item}</li>
-          ))}
-        </ul>
-      </article>
-    );
-  }
-
-  if (block.type === "checklist") {
-    return (
-      <article className="panel">
-        <h3>{block.title}</h3>
-        <ul className="checklist">
-          {block.items.map((item) => (
-            <li key={item.id}>
-              <input type="checkbox" readOnly />
-              <span>{item.label}</span>
-              {item.required && <strong>필수</strong>}
-            </li>
-          ))}
-        </ul>
-      </article>
-    );
-  }
-
-  if (block.type === "deadlines") {
-    return (
-      <section className="panel" aria-label={block.title}>
-        <h3>{block.title}</h3>
-        <p className="caption">마감일은 한국 시간(KST) 기준입니다.</p>
-        <ul className="deadlines">
-          {block.items.map((item) => (
-            <li key={item.id}>
-              <span>{item.title}</span>
-              <strong>마감일 {item.deadline}</strong>
-            </li>
-          ))}
-        </ul>
-      </section>
-    );
-  }
-
-  if (block.type === "personas") {
-    return (
-      <section className="panel" aria-label={block.title}>
-        <h3>{block.title}</h3>
-        <p className="caption">검색 프로필에 적용된 점수 가중치 프리셋입니다.</p>
-        <ul className="personas">
-          {block.items.map((item) => (
-            <li key={item.id} className={item.active ? "active" : undefined}>
-              <strong>{item.id}</strong>
-              {item.active && <em className="applied">적용됨</em>}
-              <span>{item.description}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
-    );
-  }
-
-  if (block.type === "source-list") {
-    return (
-      <section className="panel" aria-label={block.title}>
-        <h3>{block.title}</h3>
-        <p className="caption">공공 데이터 출처와 응답 상태입니다.</p>
-        <ul className="sources">
-          {block.items.map((item) => (
-            <li key={item.id}>
-              <div className="source-name">
-                <strong>{item.provider}</strong>
-                <span>{item.dataset}</span>
-              </div>
-              <em className={`src-status ${item.status}`}>{sourceStatusLabel(item.status)}</em>
-            </li>
-          ))}
-        </ul>
-      </section>
-    );
-  }
-
-  if (block.type === "tool-trace") {
-    return (
-      <section className="panel" aria-label={block.title}>
-        <h3>{block.title}</h3>
-        <p className="caption">게이트웨이가 호출한 MCP 도구와 응답 시간입니다.</p>
-        <ul className="traces">
-          {block.items.map((item) => (
-            <li key={item.tool}>
-              <code>{item.tool}</code>
-              <em className={`src-status ${item.status}`}>{sourceStatusLabel(item.status)}</em>
-              <strong>{item.durationMs}ms</strong>
-            </li>
-          ))}
-        </ul>
-      </section>
-    );
-  }
-
-  if (block.type === "steps") {
-    return (
-      <article className="panel">
-        <h3>{block.title}</h3>
-        <ol className="steps">
-          {block.steps.map((step) => (
-            <li key={step.title}>
-              <strong>{step.title}</strong>
-              <span>{step.description}</span>
-            </li>
-          ))}
-        </ol>
-      </article>
-    );
-  }
-
-  return <aside className="notice">{block.text}</aside>;
 }
 
 function statusLabel(status: string): string {
