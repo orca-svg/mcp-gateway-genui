@@ -42,6 +42,31 @@ describe("App", () => {
     expect(within(prep).queryByText("임대차계약서")).not.toBeInTheDocument();
   });
 
+  it("links the selected benefit's prep to its official source", () => {
+    render(<App />);
+
+    const prep = screen.getByRole("region", { name: "신청 준비" });
+    const link = within(prep).getByRole("link", { name: /공식 페이지/ });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://www.gov.kr/portal/service/serviceInfo/611000000119"
+    );
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+  });
+
+  it("updates the source link when another card is selected", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "국가장학금" }));
+
+    const prep = screen.getByRole("region", { name: "신청 준비" });
+    expect(within(prep).getByRole("link", { name: /공식 페이지/ })).toHaveAttribute(
+      "href",
+      "https://www.kosaf.go.kr"
+    );
+  });
+
   it("switches scenarios and resets the prep to the new top result", () => {
     render(<App />);
 

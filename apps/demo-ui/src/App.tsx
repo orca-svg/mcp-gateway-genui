@@ -129,6 +129,14 @@ export function App() {
                   </li>
                 ))}
               </ol>
+              <a
+                className="source-link"
+                href={view.prep.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                공식 페이지로 이동 ↗
+              </a>
             </>
           ) : (
             <p>선택한 항목의 상세가 없습니다.</p>
