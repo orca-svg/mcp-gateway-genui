@@ -10,19 +10,31 @@ into the gateway without changing MCP tool contracts.
 - `CachingBenefitRepository` — TTL cache wrapper for on-demand repository reads.
 - `YouthCenterRepository` — live adapter for the 온통청년 / 한국고용정보원 청년정책
   API (data.go.kr dataset 15143273).
+- `BokjiroRepository` — live adapter for 복지로 / 한국사회보장정보원 public welfare services.
+- `SubsidyRepository` — live adapter for 보조금24-style government subsidy service lists.
 
-## YouthCenterRepository
+## Live repositories
 
 API keys are supplied at runtime only:
 
 ```ts
-import { YouthCenterRepository } from "@mcp-gen-ui/adapters";
+import {
+  BokjiroRepository,
+  CompositeBenefitRepository,
+  SubsidyRepository,
+  YouthCenterRepository
+} from "@mcp-gen-ui/adapters";
 
-const repository = new YouthCenterRepository({
-  apiKey: process.env.YOUTH_CENTER_API_KEY
-});
+const repository = new CompositeBenefitRepository([
+  new YouthCenterRepository({ apiKey: process.env.YOUTH_CENTER_API_KEY }),
+  new BokjiroRepository({ apiKey: process.env.BOKJIRO_API_KEY }),
+  new SubsidyRepository({ apiKey: process.env.SUBSIDY24_API_KEY })
+]);
 ```
 
-If no key is supplied, or the live API call fails, the repository returns an
+If no key is supplied, or the live API call fails, each repository returns an
 empty result set and emits a warning through the configured logger. Tests use
-recorded fixtures and do not require a live key.
+recorded fixtures and do not require live keys. Adapters normalize public policy
+fields only (title, provider, public URLs, eligibility text, application periods,
+regions, age bands, household hints, categories, and deadlines); they do not
+persist keys or personal identifiers.
