@@ -48,7 +48,11 @@ jobs:
         uses: changesets/action@v1
         with:
           version: pnpm changeset version
-          publish: pnpm publish -r --provenance --access public --no-git-checks
+          # `changeset publish` emits the "New tag:" lines this action parses
+          # to push git tags and create GitHub releases; `pnpm publish -r`
+          # does not, which left 0.2.0 untagged. Provenance and public access
+          # come from each package's publishConfig.
+          publish: pnpm changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
