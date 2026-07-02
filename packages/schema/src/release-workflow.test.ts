@@ -33,11 +33,27 @@ describe('release automation configuration', () => {
 
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('NPM_TOKEN');
+    // setup-node's registry-url .npmrc reads auth from NODE_AUTH_TOKEN and
+    // shadows the .npmrc the changesets action writes, so the publish step
+    // must forward the token under that name too.
+    expect(workflow).toContain('NODE_AUTH_TOKEN');
     expect(workflow).toContain('changesets/action');
-    expect(workflow).toContain('pnpm publish -r --provenance');
+    // `changeset publish` (not `pnpm publish -r`) so the action sees the
+    // "New tag:" output it needs to push tags and create GitHub releases.
+    expect(workflow).toContain('publish: pnpm changeset publish');
     expect(workflow).toContain('pnpm build');
     expect(workflow).toContain('pnpm typecheck');
     expect(workflow).toContain('pnpm test');
+
+    // With no --provenance flag on the publish command, provenance (and
+    // public access) must come from each published package's publishConfig.
+    for (const pkg of ['schema', 'core', 'mcp-server', 'adapters']) {
+      const packageJson = readJson(`packages/${pkg}/package.json`);
+      expect(packageJson.publishConfig, `packages/${pkg} publishConfig`).toMatchObject({
+        access: 'public',
+        provenance: true,
+      });
+    }
   });
 
   it('gates publishing behind the RELEASE_ENABLED go-live switch', () => {
