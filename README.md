@@ -1,5 +1,7 @@
 # mcp-gen-ui-gateway
 
+![mcp-gen-ui-gateway banner](docs/assets/banner.png)
+
 Open-source **MCP gateway for public-benefit discovery and Gen UI rendering**.
 
 It exposes Korean public-benefit data through deterministic MCP tools and
