@@ -22,17 +22,17 @@
 - [x] Document the pre-1.0 semver policy: 0.x minor releases may break public
   APIs, while patch releases should remain backward-compatible.
 
-## G-3 (in flight — capability wave)
+## G-3 (capability wave)
 
-Tracked by the issue pipeline; status as of 2026-06-10:
+Tracked by the issue pipeline; status as of 2026-07-02 — **complete**:
 
 - [x] Persona-weighted scoring with hard-blocker safety gate (#10 / #18)
 - [x] Structured `applicationDeadline` + `getUpcomingDeadlines` tool (#11 / #19)
-- [ ] Built-in persona presets + `listPersonas` tool (#13)
-- [ ] Adapter framework + Composite/Caching + 온통청년 live adapter (#12)
-- [ ] `applicationDeadline` timezone policy + shared KST→UTC helper (#20)
-- [ ] Demo UI renders scores/personas/deadlines + `docs/personas.md` (#16)
-- [ ] Changesets + CHANGELOG entries for the G-3 features (#22)
+- [x] Built-in persona presets + `listPersonas` tool (#13 / #30)
+- [x] Adapter framework + Composite/Caching + 온통청년 live adapter (#12 / #29)
+- [x] `applicationDeadline` timezone policy + shared KST→UTC helper (#20 / #31)
+- [x] Demo UI renders scores/personas/deadlines + `docs/personas.md` (#16 / #37)
+- [x] Changesets + CHANGELOG entries for the G-3 features (#22 / #33)
 
 ## G-4 (public 0.x — operational trust)
 
@@ -41,12 +41,12 @@ Publishing does **not** wait for full adapter coverage — 0.1.0 ships first and
 each completed adapter cuts a 0.x minor.
 
 - [ ] First public npm release 0.1.0 with provenance (#5, after #22)
-- [ ] Remaining official adapters: 복지로 + 보조금24/장학재단 (#14),
-  `McpClientBenefitRepository` + Korean MCP catalog docs (#15)
+- [x] Remaining official adapters: 복지로 + 보조금24/장학재단 (#14 / #38)
+- [ ] `McpClientBenefitRepository` + Korean MCP catalog docs (#15)
 - [ ] Daily live-API canary CI with auto-filed drift issues and per-source
   README status badges (#23)
-- [ ] Public-data attribution (공공누리), non-eligibility disclaimer alignment,
-  and a SECURITY.md response policy (#24)
+- [x] Public-data attribution (공공누리), non-eligibility disclaimer alignment,
+  and a SECURITY.md response policy (#24 / #34)
 - [ ] MCP host compatibility matrix: Claude Desktop, Claude Code, one
   non-Claude host, with config snippets in README (#25)
 
