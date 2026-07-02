@@ -42,7 +42,7 @@ release ships as soon as the pipeline is ready and each completed adapter cuts
 a 0.x minor. The G-3 changesets accumulated before the first publish, so the
 first public version is 0.2.0 (five minor bumps on the 0.1.0 baseline).
 
-- [ ] First public npm release 0.2.0 with provenance (#5, after #22)
+- [x] First public npm release 0.2.0 with provenance (#5, after #22)
 - [x] Remaining official adapters: 복지로 + 보조금24/장학재단 (#14 / #38)
 - [ ] `McpClientBenefitRepository` + Korean MCP catalog docs (#15)
 - [ ] Daily live-API canary CI with auto-filed drift issues and per-source
