@@ -54,14 +54,26 @@ gateway without taking on the demo app or repository internals:
 
 | Package | Public contract |
 | --- | --- |
-| `@mcp-gen-ui/schema` | Zod schemas and generated JSON Schema types that define the tool input/output contracts. |
-| `@mcp-gen-ui/core` | Stable embedder APIs: `BenefitRepository`, `BenefitToolService`, `SnapshotStore`, and the candidate-framed recommendation/checklist helpers they compose. |
-| `@mcp-gen-ui/adapters` | Optional `BenefitRepository` implementations for fan-in, TTL caching, and live 온통청년 public-benefit data. |
-| `@mcp-gen-ui/mcp-server` | The stdio MCP server binary that exposes the gateway tools. |
+| `@mcp-gen-ui/schema` | Zod schemas and generated JSON Schema types that define tool input/output contracts, including `profile.persona`, request `weights`, result `score`, `scoreBreakdown`, and structured `applicationDeadline` fields. |
+| `@mcp-gen-ui/core` | Stable embedder APIs: `BenefitRepository`, `BenefitToolService`, `SnapshotStore`, persona helpers (`defaultPersonaRegistry`, `resolveWeights`), and the candidate-framed recommendation/checklist/deadline helpers they compose. |
+| `@mcp-gen-ui/adapters` | Optional `BenefitRepository` implementations for fan-in, TTL caching, and live 온통청년 · 복지로 · 보조금24 public-benefit data. |
+| `@mcp-gen-ui/mcp-server` | The stdio MCP server binary that exposes the gateway tools, including persona preset discovery and upcoming-deadline retrieval. |
 
 `fixtureBenefits` is exported as example data for tests, demos, and local
 experiments. It is not a live government data source or a stability promise about
 real benefit availability.
+
+### Persona and score contract
+
+`searchBenefits` accepts a non-identifying `profile.persona` and optional
+per-dimension `weights`. The built-in personas are `youth_jobseeker`,
+`university_student`, `newlywed_family`, `single_parent`, `senior`, and
+`general`; request weights override the selected preset only for the dimensions
+provided. Result summaries include a normalized `score` plus `scoreBreakdown`
+items (`dimension`, `signal`, `weight`, `contribution`, `explanation`) so hosts
+can render transparent ranking explanations without claiming legal eligibility.
+`getUpcomingDeadlines` returns the same score fields alongside each structured
+UTC `applicationDeadline`.
 
 ### Embed the core package
 
@@ -91,12 +103,14 @@ changelog and migration notes where practical.
 
 ## Tools
 
+The stdio MCP server currently exposes these seven deterministic tools:
+
 | Tool | Input | Output |
 | --- | --- | --- |
-| `searchBenefits` | `{ query, profile }` | Ranked benefit candidates with evidence. |
+| `searchBenefits` | `{ query, profile, weights? }` | Ranked benefit candidates with evidence, candidate-framed status, `score`, and `scoreBreakdown`. |
 | `listPersonas` | `{}` | Built-in persona presets and scoring weights for host selection. |
-| `getBenefitDetail` | `{ id }` | Structured benefit detail. |
-| `getUpcomingDeadlines` | `{ profile?, withinDays? }` | Deadline-bearing benefit candidates sorted by soonest application deadline. |
+| `getBenefitDetail` | `{ id }` | Structured benefit detail, including `applicationDeadline` when known. |
+| `getUpcomingDeadlines` | `{ profile?, withinDays? }` | Deadline-bearing benefit candidates sorted by soonest application deadline, with score fields reused from recommendations. |
 | `buildChecklist` | `{ benefitId }` | Document checklist with a non-eligibility caveat. |
 | `getApplicationGuide` | `{ benefitId }` | User-action-only application steps. |
 | `getChangeLog` | `{ entityId? }` | Snapshot / change-log entries. |
@@ -149,6 +163,7 @@ See `docs/host-prompts.md` for the recommended host prompt and an example flow.
 - [`docs/data-sources.md`](docs/data-sources.md) — official fixture source attribution, license notes, and source URL coverage.
 - [`docs/prd.md`](docs/prd.md) — product spec and scope.
 - [`docs/host-prompts.md`](docs/host-prompts.md) — recommended host prompt + tools.
+- [`docs/personas.md`](docs/personas.md) — persona weighting model, preset rationale, and score contract.
 - [`docs/extending.md`](docs/extending.md) — bring your own data source and other extension points.
 - [`docs/git-workflow.md`](docs/git-workflow.md) — branching and PR workflow.
 - [`docs/roadmap.md`](docs/roadmap.md) — G-1 scope and deferred work (incl. browser-assist).

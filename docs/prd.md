@@ -15,7 +15,7 @@ The project needs an open-source MCP server that can gather and normalize public
 
 Build an open-source **MCP-Gen UI Gateway** focused first on Korean public benefits and Government24-style public-service discovery.
 
-The MVP provides a local MCP server, shared JSON schemas, SQLite-backed snapshot/change logging, rule-based consistency checks, and a Vite React demo UI that renders benefit search results, details, checklists, and application guides from structured JSON.
+The MVP provides a local MCP server, shared JSON schemas, SQLite-backed snapshot/change logging, rule-based consistency checks, and a Vite React demo UI that renders benefit search results, persona-weighted scores, upcoming deadlines, details, checklists, and application guides from structured JSON.
 
 ## User Stories
 
@@ -32,13 +32,15 @@ The MVP provides a local MCP server, shared JSON schemas, SQLite-backed snapshot
 11. As a developer, I want schemas exported as JSON Schema, so that non-TypeScript clients can validate responses.
 12. As a UI developer, I want domain JSON separated from A2UI mapping, so that the same MCP server can support multiple UI renderers.
 13. As a UI developer, I want a fixture-backed demo UI, so that I can verify rendering without live government-site dependencies.
-14. As a maintainer, I want snapshots and change logs, so that government data changes can be tracked and explained.
-15. As a maintainer, I want fixture import/export, so that tests and demos are reproducible.
-16. As a contributor, I want consistency rules to be plugin-like, so that new validation rules can be added without rewriting core logic.
-17. As an integrator, I want stdio MCP support first, so that the server works with local MCP hosts.
-18. As a future platform maintainer, I want the core transport-neutral, so that HTTP/SSE can be added later.
-19. _(deferred — see Roadmap)_ As a security-conscious user, I want browser assist clearly marked experimental, so that I understand its limitations.
-20. _(deferred — see Roadmap)_ As a security-conscious user, I want browser assist to require explicit approval before clicks, so that it cannot act on pages without consent.
+14. As a user, I want to choose a recommendation persona and see score explanations, so that ranking feels transparent without being presented as a legal eligibility decision.
+15. As a user, I want an upcoming-deadlines view, so that I can prioritize candidates that need action soon.
+16. As a maintainer, I want snapshots and change logs, so that government data changes can be tracked and explained.
+17. As a maintainer, I want fixture import/export, so that tests and demos are reproducible.
+18. As a contributor, I want consistency rules to be plugin-like, so that new validation rules can be added without rewriting core logic.
+19. As an integrator, I want stdio MCP support first, so that the server works with local MCP hosts.
+20. As a future platform maintainer, I want the core transport-neutral, so that HTTP/SSE can be added later.
+21. _(deferred — see Roadmap)_ As a security-conscious user, I want browser assist clearly marked experimental, so that I understand its limitations.
+22. _(deferred — see Roadmap)_ As a security-conscious user, I want browser assist to require explicit approval before clicks, so that it cannot act on pages without consent.
 
 ## Implementation Decisions
 
@@ -49,9 +51,11 @@ The MVP provides a local MCP server, shared JSON schemas, SQLite-backed snapshot
 - Use **Zod as the source of truth** for domain schemas and export JSON Schema for external consumers.
 - Store snapshots, change-log entries, and content hashes in **SQLite** (via Node's built-in `node:sqlite`, no native build step).
 - Support JSON fixture data for deterministic tests and demos.
-- Implement five MVP MCP tools:
+- Implement the G-3 MCP tool surface:
   - `searchBenefits`
+  - `listPersonas`
   - `getBenefitDetail`
+  - `getUpcomingDeadlines`
   - `buildChecklist`
   - `getApplicationGuide`
   - `getChangeLog`
@@ -69,7 +73,7 @@ The MVP provides a local MCP server, shared JSON schemas, SQLite-backed snapshot
 - Test each MCP tool against fixture data.
 - Test SQLite snapshot, change-log, and unchanged/updated/created behavior.
 - Test consistency rules with valid, invalid, and partially missing benefit records.
-- Test UI rendering from fixture domain JSON.
+- Test UI rendering from fixture domain JSON, including score bars/breakdown, persona choices, and upcoming deadlines.
 - Use fixture-first tests so contributors can run the suite without live government-site dependencies.
 
 ## Out of Scope
@@ -84,10 +88,10 @@ The MVP provides a local MCP server, shared JSON schemas, SQLite-backed snapshot
 - Experimental browser-assist (deferred — see `docs/roadmap.md`).
 - Travel and medical use cases beyond architecture compatibility.
 
-## Status in this repository (G-1)
+## Status in this repository (G-3)
 
-- **Shipped:** schema, core (repository, recommender, sqlite-store, consistency, tool-service), mcp-server (5 tools), demo-ui, fixture-first tests, CI.
-- **Deferred:** experimental `browser-assist` (user stories 19–20) — intentionally excluded from G-1 and tracked in `docs/roadmap.md`.
+- **Shipped:** schema, core (repository, persona-weighted recommender, deadlines, sqlite-store, consistency, tool-service), mcp-server tool surface (`searchBenefits`, `listPersonas`, `getBenefitDetail`, `getUpcomingDeadlines`, `buildChecklist`, `getApplicationGuide`, `getChangeLog`), fixture-backed demo-ui rendering scores/personas/deadlines, fixture-first tests, CI.
+- **Deferred:** experimental `browser-assist` (user stories 21–22) — intentionally excluded from G-1 and tracked in `docs/roadmap.md`.
 
 ## Further Notes
 
