@@ -1,6 +1,15 @@
 # mcp-gen-ui-gateway
 
-![mcp-gen-ui-gateway banner](docs/assets/banner.png)
+<p align="center">
+  <img src="docs/assets/banner.png" alt="mcp-gen-ui-gateway banner" width="720" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/orca-svg/mcp-gateway-genui/actions/workflows/ci.yml"><img src="https://github.com/orca-svg/mcp-gateway-genui/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
+  <img src="https://img.shields.io/badge/node-%3E%3D22.5.0-339933.svg" alt="Node >= 22.5.0">
+  <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome"></a>
+</p>
 
 Open-source **MCP gateway for public-benefit discovery and Gen UI rendering**.
 
@@ -11,6 +20,54 @@ the MCP host model handles the conversation and decides which tools to call.
 > **Status:** G-1 MVP. This repository is a clean-room reimplementation and
 > continued maintenance of the original [KOI competition project](https://github.com/koi2026/mcp-gen-ui-gateway),
 > used only as a specification (PRD, schema definitions, host prompts). See `NOTICE`.
+
+## Contents
+
+- [Quick start](#quick-start)
+- [Why](#why)
+- [Architecture](#architecture)
+- [Public API](#public-api)
+- [Tools](#tools)
+- [Safety boundaries](#safety-boundaries)
+- [Documentation](#documentation)
+- [License](#license)
+
+## Quick start
+
+Requires **Node.js >= 22.5** (uses the built-in `node:sqlite`) and pnpm.
+
+```bash
+pnpm install
+pnpm build       # build workspace packages first
+pnpm typecheck
+pnpm test
+```
+
+Run pieces individually:
+
+```bash
+pnpm dev          # demo UI (Vite)
+pnpm mcp          # stdio MCP server
+pnpm schemas      # re-export JSON Schema from Zod
+```
+
+### Using the MCP server from a host
+
+The server speaks MCP over stdio. Point an MCP host at the built binary:
+
+```json
+{
+  "mcpServers": {
+    "mcp-gen-ui-gateway": {
+      "command": "node",
+      "args": ["packages/mcp-server/dist/index.js"],
+      "env": { "MCP_GEN_UI_DB_PATH": "mcp-gen-ui-gateway.db" }
+    }
+  }
+}
+```
+
+See `docs/host-prompts.md` for the recommended host prompt and an example flow.
 
 ## Why
 
@@ -116,43 +173,6 @@ The stdio MCP server currently exposes these seven deterministic tools:
 | `buildChecklist` | `{ benefitId }` | Document checklist with a non-eligibility caveat. |
 | `getApplicationGuide` | `{ benefitId }` | User-action-only application steps. |
 | `getChangeLog` | `{ entityId? }` | Snapshot / change-log entries. |
-
-## Quick start
-
-Requires **Node.js >= 22.5** (uses the built-in `node:sqlite`) and pnpm.
-
-```bash
-pnpm install
-pnpm build       # build workspace packages first
-pnpm typecheck
-pnpm test
-```
-
-Run pieces individually:
-
-```bash
-pnpm dev          # demo UI (Vite)
-pnpm mcp          # stdio MCP server
-pnpm schemas      # re-export JSON Schema from Zod
-```
-
-### Using the MCP server from a host
-
-The server speaks MCP over stdio. Point an MCP host at the built binary:
-
-```json
-{
-  "mcpServers": {
-    "mcp-gen-ui-gateway": {
-      "command": "node",
-      "args": ["packages/mcp-server/dist/index.js"],
-      "env": { "MCP_GEN_UI_DB_PATH": "mcp-gen-ui-gateway.db" }
-    }
-  }
-}
-```
-
-See `docs/host-prompts.md` for the recommended host prompt and an example flow.
 
 ## Safety boundaries
 
