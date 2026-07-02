@@ -1,6 +1,6 @@
 {
   "name": "@mcp-gen-ui/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Transport-neutral public-benefit repository, recommender, and tool service for mcp-gen-ui.",
   "license": "Apache-2.0",
   "author": "Team KOI",

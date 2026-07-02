@@ -1,6 +1,6 @@
 {
   "name": "@mcp-gen-ui/schema",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Zod schemas and JSON Schema exports for mcp-gen-ui gateway contracts.",
   "license": "Apache-2.0",
   "author": "Team KOI",
