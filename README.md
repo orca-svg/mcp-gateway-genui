@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://github.com/orca-svg/mcp-gateway-genui/actions/workflows/ci.yml"><img src="https://github.com/orca-svg/mcp-gateway-genui/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="https://github.com/orca-svg/mcp-gateway-genui/actions/workflows/canary.yml"><img src="https://github.com/orca-svg/mcp-gateway-genui/actions/workflows/canary.yml/badge.svg" alt="Canary (live APIs)"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
   <img src="https://img.shields.io/badge/node-%3E%3D22.5.0-339933.svg" alt="Node >= 22.5.0">
   <a href="CONTRIBUTING.md"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs welcome"></a>

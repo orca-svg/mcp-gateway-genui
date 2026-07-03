@@ -142,6 +142,40 @@ The recommender returns `candidate`, `needs_more_info`, or `not_applicable` with
 reasons and missing information. Present these results as candidate-framed
 guidance, not as final legal eligibility decisions.
 
+## Canary contract
+
+The daily canary workflow (`canary.yml`) performs a live smoke check of every
+official adapter by calling the real government API with a small `numOfRows=5`
+probe and validating the top-level JSON envelope shape.
+
+**What the canary checks:**
+
+| Source | Endpoint family | Envelope key validated |
+|--------|----------------|------------------------|
+| youth-center | `youthPlcyList/getYouthPlcyList` | `result.youthPolicyList` is an array |
+| bokjiro | `NationalWelfareInformationsV001` | `response.body` is an object |
+| subsidy24 | `gov24SubsidyList` | `response.body` is an object |
+
+**Contract for new adapters:** when adding a new official source, add a
+corresponding entry to `packages/canary-check/src/run.ts` (the `SOURCES`
+array) with:
+- `name` — a short kebab-case identifier
+- `envKeys` — `[<SOURCE_API_KEY>, 'DATA_GO_KR_API_KEY']` (per-source first,
+  shared fallback second)
+- `endpoint` — the live API base URL
+- `queryParams` — a function returning the minimal probe query (small
+  `numOfRows`, include `serviceKey`)
+- `validate` — a function exported from `checks.ts`, with unit tests in
+  `checks.test.ts`, that verifies the top-level response envelope
+
+**Failure behaviour:**
+
+- Shape mismatch or non-2xx → an AFK-tagged GitHub issue is automatically filed
+  (deduplicated: no spam on consecutive failures).
+- Missing secret → source is skipped with a neutral (non-failing) status so
+  public forks and pre-activation repos stay green.
+- Canary failures **do not** block the main CI workflow.
+
 ## Extension checklist
 
 Before opening a PR or enabling a custom backend:

@@ -1,0 +1,36 @@
+export interface CanaryResult {
+  source: string;
+  status: 'ok' | 'skipped' | 'drift' | 'error';
+  detail?: string;
+}
+
+export function validateYouthCenterShape(data: unknown): boolean {
+  if (typeof data !== 'object' || data === null) return false;
+  const d = data as Record<string, unknown>;
+  const result = d.result as Record<string, unknown> | undefined;
+  return Array.isArray(result?.youthPolicyList);
+}
+
+export function validateBokjiroShape(data: unknown): boolean {
+  if (typeof data !== 'object' || data === null) return false;
+  const d = data as Record<string, unknown>;
+  const response = d.response as Record<string, unknown> | undefined;
+  const body = response?.body;
+  return typeof body === 'object' && body !== null;
+}
+
+export function validateSubsidyShape(data: unknown): boolean {
+  if (typeof data !== 'object' || data === null) return false;
+  const d = data as Record<string, unknown>;
+  const response = d.response as Record<string, unknown> | undefined;
+  const body = response?.body;
+  return typeof body === 'object' && body !== null;
+}
+
+export function buildIssueTitle(source: string): string {
+  return `canary: ${source} adapter drift detected (AFK)`;
+}
+
+export function hasLiveFailure(results: CanaryResult[]): boolean {
+  return results.some((r) => r.status === 'drift' || r.status === 'error');
+}

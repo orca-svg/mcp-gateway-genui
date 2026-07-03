@@ -13,5 +13,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@mcp-gen-ui/demo-ui"]
+  "ignore": ["@mcp-gen-ui/demo-ui", "@mcp-gen-ui/canary-check"]
 }
