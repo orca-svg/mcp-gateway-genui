@@ -57,19 +57,32 @@ describe('validateBokjiroShape', () => {
 });
 
 describe('validateSubsidyShape', () => {
-  it('accepts the recorded fixture envelope', () => {
+  it('accepts MOEF flat envelope with resultCode and numOfRows', () => {
     const data = {
-      response: { body: { items: [{ svcId: 'G1' }], totalCount: 1 } },
+      resultCode: '00',
+      resultMsg: 'OK',
+      numOfRows: 2,
+      pageNo: 1,
+      totalCount: 5,
     };
     expect(validateSubsidyShape(data)).toBe(true);
   });
 
-  it('accepts an empty body object', () => {
-    expect(validateSubsidyShape({ response: { body: {} } })).toBe(true);
+  it('accepts MOEF flat envelope with zero results', () => {
+    expect(
+      validateSubsidyShape({ resultCode: '00', numOfRows: 0, pageNo: 1, totalCount: 0 }),
+    ).toBe(true);
   });
 
-  it('rejects when response.body is absent', () => {
-    expect(validateSubsidyShape({ response: {} })).toBe(false);
+  it('rejects when neither resultCode nor numOfRows is present', () => {
+    expect(validateSubsidyShape({})).toBe(false);
+    expect(validateSubsidyShape({ response: { body: {} } })).toBe(false);
+  });
+
+  it('rejects null and non-objects', () => {
+    expect(validateSubsidyShape(null)).toBe(false);
+    expect(validateSubsidyShape('text')).toBe(false);
+    expect(validateSubsidyShape(42)).toBe(false);
   });
 });
 

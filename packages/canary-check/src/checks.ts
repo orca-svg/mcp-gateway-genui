@@ -22,9 +22,7 @@ export function validateBokjiroShape(data: unknown): boolean {
 export function validateSubsidyShape(data: unknown): boolean {
   if (typeof data !== 'object' || data === null) return false;
   const d = data as Record<string, unknown>;
-  const response = d.response as Record<string, unknown> | undefined;
-  const body = response?.body;
-  return typeof body === 'object' && body !== null;
+  return typeof d.resultCode === 'string' || typeof d.numOfRows === 'number';
 }
 
 export function buildIssueTitle(source: string): string {
