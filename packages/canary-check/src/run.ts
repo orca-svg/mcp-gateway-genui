@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
   buildIssueTitle,
   hasLiveFailure,
+  toShieldsEndpointBadge,
   validateBokjiroShape,
   validateSubsidyShape,
   validateYouthCenterShape,
@@ -139,6 +140,48 @@ function fileIssue(source: string, detail: string, runUrl: string): void {
   }
 }
 
+async function publishStatusBadges(results: CanaryResult[]): Promise<void> {
+  const token = process.env.GIST_TOKEN;
+  const gistId = process.env.CANARY_STATUS_GIST_ID;
+  if (!token || !gistId) {
+    console.log('[canary] Badge publishing skipped — GIST_TOKEN or CANARY_STATUS_GIST_ID is not configured.');
+    return;
+  }
+
+  const files = Object.fromEntries(
+    results.map((result) => [
+      `${result.source}.json`,
+      { content: `${JSON.stringify(toShieldsEndpointBadge(result), null, 2)}\n` },
+    ]),
+  );
+
+  let response: Response;
+  try {
+    response = await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: 'PATCH',
+      headers: {
+        accept: 'application/vnd.github+json',
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        'user-agent': 'mcp-gateway-genui-canary',
+        'x-github-api-version': '2022-11-28',
+      },
+      body: JSON.stringify({ files }),
+    });
+  } catch (err) {
+    console.log(`[canary] Badge publishing skipped — gist update request failed: ${String(err)}`);
+    return;
+  }
+
+  if (!response.ok) {
+    const detail = await response.text();
+    console.log(`[canary] Badge publishing skipped — gist update failed with HTTP ${response.status}: ${detail.slice(0, 200)}`);
+    return;
+  }
+
+  console.log('[canary] Published per-source status badges.');
+}
+
 async function main() {
   const results = await Promise.all(SOURCES.map(checkSource));
 
@@ -159,6 +202,8 @@ async function main() {
       fileIssue(result.source, result.detail ?? result.status, runUrl);
     }
   }
+
+  await publishStatusBadges(results);
 
   if (results.every((r) => r.status === 'skipped')) {
     console.log('[canary] All sources skipped — no API keys configured (public fork or pre-activation). Exiting neutral.');

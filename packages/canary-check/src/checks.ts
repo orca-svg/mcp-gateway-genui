@@ -4,6 +4,29 @@ export interface CanaryResult {
   detail?: string;
 }
 
+export interface ShieldsEndpointBadge {
+  schemaVersion: 1;
+  label: string;
+  message: CanaryResult['status'];
+  color: 'brightgreen' | 'lightgrey' | 'orange' | 'red';
+}
+
+export function toShieldsEndpointBadge(result: CanaryResult): ShieldsEndpointBadge {
+  const colorByStatus: Record<CanaryResult['status'], ShieldsEndpointBadge['color']> = {
+    ok: 'brightgreen',
+    skipped: 'lightgrey',
+    drift: 'orange',
+    error: 'red',
+  };
+
+  return {
+    schemaVersion: 1,
+    label: result.source,
+    message: result.status,
+    color: colorByStatus[result.status],
+  };
+}
+
 export function validateYouthCenterShape(data: unknown): boolean {
   if (typeof data !== 'object' || data === null) return false;
   const d = data as Record<string, unknown>;

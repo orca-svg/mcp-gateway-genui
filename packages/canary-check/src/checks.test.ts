@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildIssueTitle,
   hasLiveFailure,
+  toShieldsEndpointBadge,
   validateBokjiroShape,
   validateSubsidyShape,
   validateYouthCenterShape,
@@ -126,5 +127,31 @@ describe('hasLiveFailure', () => {
 
   it('returns false for an empty list', () => {
     expect(hasLiveFailure([])).toBe(false);
+  });
+});
+
+describe('toShieldsEndpointBadge', () => {
+  it('renders ok results as shields.io endpoint JSON', () => {
+    expect(toShieldsEndpointBadge({ source: 'youth-center', status: 'ok' })).toEqual({
+      schemaVersion: 1,
+      label: 'youth-center',
+      message: 'ok',
+      color: 'brightgreen',
+    });
+  });
+
+  it('uses distinct messages and colors for skipped, drift, and error', () => {
+    expect(toShieldsEndpointBadge({ source: 'bokjiro', status: 'skipped' })).toMatchObject({
+      message: 'skipped',
+      color: 'lightgrey',
+    });
+    expect(toShieldsEndpointBadge({ source: 'bokjiro', status: 'drift' })).toMatchObject({
+      message: 'drift',
+      color: 'orange',
+    });
+    expect(toShieldsEndpointBadge({ source: 'bokjiro', status: 'error' })).toMatchObject({
+      message: 'error',
+      color: 'red',
+    });
   });
 });
