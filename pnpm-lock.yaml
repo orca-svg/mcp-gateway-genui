@@ -64,6 +64,12 @@ importers:
         specifier: workspace:*
         version: link:../schema
 
+  packages/canary-check:
+    devDependencies:
+      vitest:
+        specifier: '*'
+        version: 2.1.9(@types/node@22.19.20)(jsdom@25.0.1)
+
   packages/core:
     dependencies:
       '@mcp-gen-ui/schema':

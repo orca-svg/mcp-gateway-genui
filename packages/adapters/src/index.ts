@@ -130,14 +130,15 @@ const BOKJIRO_CONFIG: AdapterConfig = {
 const SUBSIDY_CONFIG: AdapterConfig = {
   source: "subsidy24",
   envName: "SUBSIDY24_API_KEY",
-  defaultEndpoint: "https://apis.data.go.kr/1741000/gov24SubsidyList/getGov24SubsidyList",
+  defaultEndpoint: "https://apis.data.go.kr/1051000/MoefOpenAPI/T_OPD_PRMSCT_SBBGST",
   sourceLabel: "Subsidy24",
-  defaultProvider: "행정안전부",
+  defaultProvider: "기획재정부",
   queryParams: (apiKey, pageSize) => ({
     serviceKey: apiKey,
     pageNo: "1",
     numOfRows: String(pageSize),
-    type: "json"
+    resultType: "json",
+    bsnsyear: new Date().getFullYear().toString(),
   })
 };
 
