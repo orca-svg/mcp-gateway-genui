@@ -18,12 +18,16 @@ interface SourceConfig {
   endpoint: string;
   queryParams: (key: string) => Record<string, string>;
   validate: (data: unknown) => boolean;
+  // XML-only APIs (e.g. bokjiro) validate the raw response text instead of parsed JSON.
+  responseFormat?: 'json' | 'xml';
 }
 
 const SOURCES: SourceConfig[] = [
   {
     name: 'youth-center',
-    envKeys: ['YOUTH_CENTER_API_KEY', 'DATA_GO_KR_API_KEY'],
+    // No DATA_GO_KR_API_KEY fallback: 온통청년 requires a separate youthcenter.go.kr
+    // key, so the shared data.go.kr key always fails (HTTP 500) on this source.
+    envKeys: ['YOUTH_CENTER_API_KEY'],
     endpoint: 'https://apis.data.go.kr/1051000/youthPlcyList/getYouthPlcyList',
     queryParams: (key) => ({ serviceKey: key, pageNo: '1', numOfRows: '5', type: 'json' }),
     validate: validateYouthCenterShape,
@@ -33,8 +37,17 @@ const SOURCES: SourceConfig[] = [
     envKeys: ['BOKJIRO_API_KEY', 'DATA_GO_KR_API_KEY'],
     endpoint:
       'https://apis.data.go.kr/B554287/NationalWelfareInformationsV001/NationalWelfarelistV001',
-    queryParams: (key) => ({ serviceKey: key, pageNo: '1', numOfRows: '5', resultType: 'json' }),
+    // callTp=L (list call) and srchKeyCode are required; omitting them returns
+    // INVALID_REQUEST_PARAMETER_ERROR. The API responds in XML only.
+    queryParams: (key) => ({
+      serviceKey: key,
+      callTp: 'L',
+      pageNo: '1',
+      numOfRows: '5',
+      srchKeyCode: '003',
+    }),
     validate: validateBokjiroShape,
+    responseFormat: 'xml',
   },
   {
     name: 'subsidy24',
@@ -68,7 +81,7 @@ async function checkSource(config: SourceConfig): Promise<CanaryResult> {
     if (!response.ok) {
       return { source: config.name, status: 'error', detail: `HTTP ${response.status}` };
     }
-    data = await response.json();
+    data = config.responseFormat === 'xml' ? await response.text() : await response.json();
   } catch (err) {
     return { source: config.name, status: 'error', detail: String(err) };
   }

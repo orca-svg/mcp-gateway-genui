@@ -34,49 +34,56 @@ describe('validateYouthCenterShape', () => {
 });
 
 describe('validateBokjiroShape', () => {
-  it('accepts the recorded fixture envelope', () => {
-    const data = {
-      response: { body: { items: { item: [{ servId: 'W1' }] }, totalCount: 1 } },
-    };
-    expect(validateBokjiroShape(data)).toBe(true);
+  // Live envelope recorded 2026-07-04: NationalWelfarelistV001 is XML-only and
+  // requires callTp=L + srchKeyCode; success is <wantedList> with <resultCode>0.
+  it('accepts the recorded live XML envelope', () => {
+    const xml =
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><wantedList><totalCount>460</totalCount><pageNo>1</pageNo><numOfRows>2</numOfRows><resultCode>0</resultCode><resultMessage>SUCCESS</resultMessage><servList><servId>WLF00000060</servId></servList></wantedList>';
+    expect(validateBokjiroShape(xml)).toBe(true);
   });
 
-  it('accepts an empty body object', () => {
-    expect(validateBokjiroShape({ response: { body: {} } })).toBe(true);
+  it('rejects the parameter-error XML envelope', () => {
+    const xml =
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><wantedList><totalCount>0</totalCount><resultCode>10</resultCode><resultMessage>INVALID_REQUEST_PARAMETER_ERROR</resultMessage></wantedList>';
+    expect(validateBokjiroShape(xml)).toBe(false);
   });
 
-  it('rejects when response.body is absent', () => {
-    expect(validateBokjiroShape({ response: {} })).toBe(false);
-    expect(validateBokjiroShape({})).toBe(false);
+  it('rejects non-wantedList XML and HTML error pages', () => {
+    expect(validateBokjiroShape('<html><body>error</body></html>')).toBe(false);
+    expect(validateBokjiroShape('<OpenAPI_ServiceResponse></OpenAPI_ServiceResponse>')).toBe(false);
   });
 
-  it('rejects null and non-objects', () => {
+  it('rejects null and non-strings', () => {
     expect(validateBokjiroShape(null)).toBe(false);
-    expect(validateBokjiroShape('text')).toBe(false);
+    expect(validateBokjiroShape({ response: { body: {} } })).toBe(false);
   });
 });
 
 describe('validateSubsidyShape', () => {
-  it('accepts MOEF flat envelope with resultCode and numOfRows', () => {
+  // Live envelope recorded 2026-07-04 from MoefOpenAPI/T_OPD_PRMSCT_SBBGST:
+  // standard wrapped format with response.header + response.body.
+  it('accepts the recorded live MOEF envelope', () => {
     const data = {
-      resultCode: '00',
-      resultMsg: 'OK',
-      numOfRows: 2,
-      pageNo: 1,
-      totalCount: 5,
+      response: {
+        header: { resultCode: '00', resultMsg: 'NORMAL SERVICE' },
+        body: {
+          pageNo: 1,
+          totalCount: 66,
+          numOfRows: 2,
+          items: { item: [{ REALM_CODE: '010', SECT_NM: '입법및선거관리', BSNSYEAR: '2026' }] },
+        },
+      },
     };
     expect(validateSubsidyShape(data)).toBe(true);
   });
 
-  it('accepts MOEF flat envelope with zero results', () => {
-    expect(
-      validateSubsidyShape({ resultCode: '00', numOfRows: 0, pageNo: 1, totalCount: 0 }),
-    ).toBe(true);
+  it('accepts an empty body object', () => {
+    expect(validateSubsidyShape({ response: { body: {} } })).toBe(true);
   });
 
-  it('rejects when neither resultCode nor numOfRows is present', () => {
+  it('rejects when response.body is absent', () => {
+    expect(validateSubsidyShape({ response: {} })).toBe(false);
     expect(validateSubsidyShape({})).toBe(false);
-    expect(validateSubsidyShape({ response: { body: {} } })).toBe(false);
   });
 
   it('rejects null and non-objects', () => {

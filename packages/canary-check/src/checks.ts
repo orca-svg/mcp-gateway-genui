@@ -11,18 +11,18 @@ export function validateYouthCenterShape(data: unknown): boolean {
   return Array.isArray(result?.youthPolicyList);
 }
 
+// NationalWelfarelistV001 is XML-only; validate the raw response text.
 export function validateBokjiroShape(data: unknown): boolean {
-  if (typeof data !== 'object' || data === null) return false;
-  const d = data as Record<string, unknown>;
-  const response = d.response as Record<string, unknown> | undefined;
-  const body = response?.body;
-  return typeof body === 'object' && body !== null;
+  if (typeof data !== 'string') return false;
+  return data.includes('<wantedList>') && /<resultCode>0<\/resultCode>/.test(data);
 }
 
 export function validateSubsidyShape(data: unknown): boolean {
   if (typeof data !== 'object' || data === null) return false;
   const d = data as Record<string, unknown>;
-  return typeof d.resultCode === 'string' || typeof d.numOfRows === 'number';
+  const response = d.response as Record<string, unknown> | undefined;
+  const body = response?.body;
+  return typeof body === 'object' && body !== null;
 }
 
 export function buildIssueTitle(source: string): string {

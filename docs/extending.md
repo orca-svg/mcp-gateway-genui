@@ -153,15 +153,16 @@ probe and validating the top-level JSON envelope shape.
 | Source | Endpoint family | Envelope key validated |
 |--------|----------------|------------------------|
 | youth-center | `youthPlcyList/getYouthPlcyList` | `result.youthPolicyList` is an array |
-| bokjiro | `NationalWelfareInformationsV001` | `response.body` is an object |
-| subsidy24 | `MoefOpenAPI/T_OPD_PRMSCT_SBBGST` | `resultCode` is a string or `numOfRows` is a number |
+| bokjiro | `NationalWelfareInformationsV001` (XML-only) | raw XML contains `<wantedList>` with `<resultCode>0` |
+| subsidy24 | `MoefOpenAPI/T_OPD_PRMSCT_SBBGST` | `response.body` is an object |
 
 **Contract for new adapters:** when adding a new official source, add a
 corresponding entry to `packages/canary-check/src/run.ts` (the `SOURCES`
 array) with:
 - `name` — a short kebab-case identifier
 - `envKeys` — `[<SOURCE_API_KEY>, 'DATA_GO_KR_API_KEY']` (per-source first,
-  shared fallback second)
+  shared fallback second). Omit the shared fallback when the source does not
+  accept a data.go.kr key (e.g. youth-center requires a youthcenter.go.kr key)
 - `endpoint` — the live API base URL
 - `queryParams` — a function returning the minimal probe query (small
   `numOfRows`, include `serviceKey`)
