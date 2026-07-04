@@ -177,6 +177,17 @@ array) with:
   public forks and pre-activation repos stay green.
 - Canary failures **do not** block the main CI workflow.
 
+**Status badges:** after each run, the canary publishes one shields.io endpoint
+JSON file per official source to the configured status gist (`<source>.json`,
+for example `youth-center.json`). Each file has the shape
+`{ "schemaVersion": 1, "label": "<source>", "message": "ok|skipped|drift|error", "color": "..." }`,
+which drives the per-source README badges. Publishing requires both `GIST_TOKEN`
+and `CANARY_STATUS_GIST_ID`; when either is absent or the gist write fails, the
+canary logs the publishing skip and continues so the workflow result remains
+based only on source health, with existing badges left stale. When adding a new
+official source, add its status badge JSON file to the gist and a matching
+`img.shields.io/endpoint` badge in the README.
+
 ## Extension checklist
 
 Before opening a PR or enabling a custom backend:
