@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+  <body>
+    <items>
+      <item>
+        <servId>WLF00004660</servId>
+        <servNm>서울형 긴급복지 지원</servNm>
+        <jurMnofNm>서울특별시</jurMnofNm>
+        <servDgst>서울 위기가구에 생계·의료비를 지원합니다.</servDgst>
+        <trgterIndvdl>서울 거주 1인 가구 및 가족 위기가구</trgterIndvdl>
+        <slctCritCn>소득 감소 또는 실직으로 생계가 곤란한 가구</slctCritCn>
+        <reqstBeginEndDe>2026.01.01 ~ 2026.11.30</reqstBeginEndDe>
+        <reqstMthPapers>방문 신청</reqstMthPapers>
+        <pprsUpdtCn>신분증&lt;br/&gt;소득 확인서</pprsUpdtCn>
+        <servDtlLink>https://www.bokjiro.go.kr/policy/WLF00004660</servDtlLink>
+      </item>
+    </items>
+  </body>
+</response>

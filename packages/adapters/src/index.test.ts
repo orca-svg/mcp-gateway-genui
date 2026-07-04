@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { BenefitRecordSchema, type BenefitRecord } from "@mcp-gen-ui/schema";
 import {
@@ -93,28 +94,7 @@ describe("CachingBenefitRepository", () => {
 });
 
 describe("public benefit API repositories", () => {
-  const recordedBokjiroResponse = {
-    response: {
-      body: {
-        items: {
-          item: [
-            {
-              servId: "WLF00004660",
-              servNm: "서울형 긴급복지 지원",
-              jurMnofNm: "서울특별시",
-              servDgst: "서울 위기가구에 생계·의료비를 지원합니다.",
-              trgterIndvdl: "서울 거주 1인 가구 및 가족 위기가구",
-              slctCritCn: "소득 감소 또는 실직으로 생계가 곤란한 가구",
-              reqstBeginEndDe: "2026.01.01 ~ 2026.11.30",
-              reqstMthPapers: "방문 신청",
-              pprsUpdtCn: "신분증<br/>소득 확인서",
-              servDtlLink: "https://www.bokjiro.go.kr/policy/WLF00004660"
-            }
-          ]
-        }
-      }
-    }
-  };
+  const recordedBokjiroXml = readFileSync(new URL("./fixtures/bokjiro-list.xml", import.meta.url), "utf8");
 
   const recordedSubsidyResponse = {
     response: {
@@ -136,10 +116,11 @@ describe("public benefit API repositories", () => {
     }
   };
 
-  it("maps recorded 복지로 responses into valid BenefitRecords with scoring fields", async () => {
+  it("maps recorded 복지로 XML responses into valid BenefitRecords with scoring fields and required query params", async () => {
+    const fetch = vi.fn(async () => new Response(recordedBokjiroXml, { status: 200 }));
     const repository = new BokjiroRepository({
       apiKey: "runtime-key-only",
-      fetch: vi.fn(async () => new Response(JSON.stringify(recordedBokjiroResponse), { status: 200 })),
+      fetch,
       now: () => new Date("2026-06-09T00:00:00.000Z")
     });
 
@@ -159,12 +140,16 @@ describe("public benefit API repositories", () => {
       sourceUrl: "https://www.bokjiro.go.kr/policy/WLF00004660"
     });
     expect(records[0].documents.map((document) => document.label)).toEqual(["신분증", "소득 확인서"]);
+    const requestUrl = fetch.mock.calls[0]?.[0] as URL;
+    expect(requestUrl.searchParams.get("callTp")).toBe("L");
+    expect(requestUrl.searchParams.get("srchKeyCode")).toBe("003");
+    expect(requestUrl.searchParams.get("resultType")).toBeNull();
   });
 
   it("maps recorded 보조금24 responses and composes with 복지로 using source URL dedupe", async () => {
     const bokjiro = new BokjiroRepository({
       apiKey: "runtime-key-only",
-      fetch: vi.fn(async () => new Response(JSON.stringify(recordedBokjiroResponse), { status: 200 })),
+      fetch: vi.fn(async () => new Response(recordedBokjiroXml, { status: 200 })),
       now: () => new Date("2026-06-09T00:00:00.000Z")
     });
     const subsidy = new SubsidyRepository({
@@ -206,6 +191,18 @@ describe("public benefit API repositories", () => {
     await expect(repository.search()).resolves.toEqual([]);
     expect(fetch).not.toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("BOKJIRO_API_KEY"));
+  });
+
+  it("returns an empty list and warns when 복지로 XML is malformed", async () => {
+    const warn = vi.fn();
+    const repository = new BokjiroRepository({
+      apiKey: "runtime-key-only",
+      fetch: vi.fn(async () => new Response("<response><body><items>", { status: 200 })),
+      logger: { warn }
+    });
+
+    await expect(repository.search()).resolves.toEqual([]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Invalid XML response"));
   });
 
   it("returns an empty list and warns when 보조금24 live API call fails", async () => {

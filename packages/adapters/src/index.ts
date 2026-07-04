@@ -1,4 +1,5 @@
 import { kstDeadlineToUtc, type BenefitRepository } from "@mcp-gen-ui/core";
+import { XMLParser, XMLValidator } from "fast-xml-parser";
 import {
   BenefitRecordSchema,
   type AgeRange,
@@ -96,6 +97,7 @@ interface AdapterConfig {
   defaultEndpoint: string;
   sourceLabel: string;
   defaultProvider: string;
+  responseFormat?: "json" | "xml";
   queryParams: (apiKey: string, pageSize: number) => Record<string, string>;
 }
 
@@ -119,11 +121,13 @@ const BOKJIRO_CONFIG: AdapterConfig = {
   defaultEndpoint: "https://apis.data.go.kr/B554287/NationalWelfareInformationsV001/NationalWelfarelistV001",
   sourceLabel: "Bokjiro",
   defaultProvider: "한국사회보장정보원",
+  responseFormat: "xml",
   queryParams: (apiKey, pageSize) => ({
     serviceKey: apiKey,
+    callTp: "L",
+    srchKeyCode: "003",
     pageNo: "1",
-    numOfRows: String(pageSize),
-    resultType: "json"
+    numOfRows: String(pageSize)
   })
 };
 
@@ -174,13 +178,17 @@ abstract class PublicBenefitApiRepository implements BenefitRepository {
         url.searchParams.set(key, value);
       }
 
-      const response = await this.fetchImpl(url);
+      const response = await this.fetchImpl(url, {
+        headers: {
+          Accept: this.config.responseFormat === "xml" ? "application/xml, text/xml;q=0.9, */*;q=0.8" : "application/json"
+        }
+      });
       if (!response.ok) {
         this.logger.warn(`${this.config.sourceLabel} API request failed with HTTP ${response.status}.`);
         return [];
       }
 
-      const payload = (await response.json()) as unknown;
+      const payload = await parseResponsePayload(response, this.config.responseFormat ?? "json");
       return extractBenefitItems(payload)
         .map((item) => this.toBenefitRecord(item))
         .filter((record): record is BenefitRecord => record !== undefined);
@@ -296,6 +304,24 @@ export class SubsidyRepository extends PublicBenefitApiRepository {
   }
 }
 
+async function parseResponsePayload(response: Response, responseFormat: "json" | "xml"): Promise<unknown> {
+  if (responseFormat === "json") {
+    return (await response.json()) as unknown;
+  }
+
+  const body = await response.text();
+  const validation = XMLValidator.validate(body);
+  if (validation !== true) {
+    throw new Error(`Invalid XML response: ${validation.err.msg}`);
+  }
+
+  return new XMLParser({
+    ignoreAttributes: false,
+    parseTagValue: false,
+    trimValues: true
+  }).parse(body) as unknown;
+}
+
 function dedupeKey(record: BenefitRecord): string {
   return `${record.sourceUrl || "no-source"}::${record.id}`.split("::")[0] || record.id;
 }
@@ -340,6 +366,8 @@ function extractBenefitItems(payload: unknown): SourceItem[] {
         stack.push(value);
       }
     }
+
+    if (looksLikeBenefitItem(record)) return [record];
 
     stack.push(...Object.values(record).filter((value) => value && typeof value === "object"));
   }
@@ -510,6 +538,23 @@ function joinedText(item: SourceItem, keys: string[]): string {
 
 function isRecord(value: unknown): value is SourceItem {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function looksLikeBenefitItem(value: SourceItem): boolean {
+  return Boolean(
+    firstText(value, ["plcyNo", "policyNo", "bizId", "id", "servId", "serviceId", "svcId", "wlfareInfoId", "bizSeCd"]) &&
+      firstText(value, [
+        "plcyNm",
+        "policyName",
+        "title",
+        "servNm",
+        "serviceName",
+        "svcNm",
+        "wlfareInfoNm",
+        "serviceNm",
+        "jrsdDptAlltNm"
+      ])
+  );
 }
 
 function messageFrom(error: unknown): string {

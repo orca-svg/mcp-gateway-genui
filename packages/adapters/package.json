@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@mcp-gen-ui/core": "workspace:*",
-    "@mcp-gen-ui/schema": "workspace:*"
+    "@mcp-gen-ui/schema": "workspace:*",
+    "fast-xml-parser": "^5.9.3"
   }
 }
