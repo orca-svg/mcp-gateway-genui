@@ -2,15 +2,16 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { BenefitToolService, FixtureBenefitRepository, SnapshotStore } from "@mcp-gen-ui/core";
+import { BenefitToolService, SnapshotStore } from "@mcp-gen-ui/core";
 import { BenefitSearchRequestSchema, UpcomingDeadlinesRequestSchema } from "@mcp-gen-ui/schema";
+import { buildBenefitRepository } from "./repository.js";
 
 /**
  * stdio MCP server. It exposes BenefitToolService as deterministic tools.
  * There is no LLM in this process — the host/client model orchestrates the
  * natural-language conversation and decides which tools to call.
  */
-const repository = new FixtureBenefitRepository();
+const repository = buildBenefitRepository();
 const snapshots = new SnapshotStore(process.env.MCP_GEN_UI_DB_PATH ?? "mcp-gen-ui-gateway.db");
 const tools = new BenefitToolService(repository, snapshots);
 

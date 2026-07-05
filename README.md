@@ -68,6 +68,14 @@ The server speaks MCP over stdio. Point an MCP host at the built binary:
 }
 ```
 
+By default the server uses the bundled fixture catalog so local setup needs no
+API keys. To opt into live public-data adapters, add runtime keys to the host
+`env`: `DATA_GO_KR_API_KEY` enables 복지로 and 보조금24, while
+`YOUTH_CENTER_API_KEY` enables 온통청년. Source-specific `BOKJIRO_API_KEY` and
+`SUBSIDY24_API_KEY` override the shared data.go.kr key for those adapters.
+Fixtures remain in the composite as a fallback unless `MCP_GEN_UI_FIXTURES` is
+set to `off`.
+
 See `docs/host-prompts.md` for the recommended host prompt and an example flow.
 
 ## Why

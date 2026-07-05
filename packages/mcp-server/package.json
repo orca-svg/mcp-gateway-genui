@@ -40,6 +40,7 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "@mcp-gen-ui/adapters": "workspace:*",
     "@mcp-gen-ui/core": "workspace:*",
     "@mcp-gen-ui/schema": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.0",

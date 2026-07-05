@@ -45,6 +45,15 @@ in-memory map. The only hard requirement is that returned values validate as
 `BenefitRecord`. Use `BenefitRecordSchema.parse(record)` at the repository
 boundary so malformed upstream data fails before it reaches the MCP tools.
 
+The packaged stdio server already composes official live adapters when runtime
+keys are present: `DATA_GO_KR_API_KEY` enables 복지로 and 보조금24,
+source-specific `BOKJIRO_API_KEY` / `SUBSIDY24_API_KEY` override that shared key,
+and `YOUTH_CENTER_API_KEY` enables 온통청년. The server wraps the composite in a
+short TTL cache and keeps fixture records as fallback unless
+`MCP_GEN_UI_FIXTURES=off` is set. Custom servers can use the same pattern with
+`CompositeBenefitRepository` and `CachingBenefitRepository` from
+`@mcp-gen-ui/adapters`.
+
 ### Normalize application deadlines
 
 `applicationDeadline` is a UTC-only ISO timestamp (`Z`) in the shared Zod and

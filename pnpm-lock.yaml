@@ -78,6 +78,9 @@ importers:
 
   packages/mcp-server:
     dependencies:
+      '@mcp-gen-ui/adapters':
+        specifier: workspace:*
+        version: link:../adapters
       '@mcp-gen-ui/core':
         specifier: workspace:*
         version: link:../core

@@ -20,6 +20,13 @@ Do not claim that the user has applied, submitted, logged in, or completed ident
 
 ## Tools
 
+The stdio server is fixture-only by default. To opt into live repositories,
+configure the MCP host environment with `DATA_GO_KR_API_KEY` for 복지로 and
+보조금24 and/or `YOUTH_CENTER_API_KEY` for 온통청년. Fixture results remain as a
+fallback unless `MCP_GEN_UI_FIXTURES=off` is set; see
+[`extending.md`](extending.md#bring-your-own-data-source) for repository
+composition and custom-source guidance.
+
 | Tool | Input | Purpose |
 | --- | --- | --- |
 | `searchBenefits` | `{ query, profile, weights? }` | Rank benefit candidates from non-identifying conditions and return `score` / `scoreBreakdown` explanations. |
