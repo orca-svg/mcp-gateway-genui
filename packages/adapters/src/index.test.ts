@@ -119,19 +119,21 @@ describe("public benefit API repositories", () => {
   const recordedSubsidyResponse = {
     response: {
       body: {
-        items: [
-          {
-            svcId: "GOV123456",
-            svcNm: "부산 청년 월세 지원",
-            jrsdDptNm: "부산광역시",
-            svcPpo: "부산 거주 청년과 대학생에게 월세를 지원합니다.",
-            supportTarget: "만 19세 이상 34세 이하 미취업 청년 1인 가구",
-            applicationDueDate: "2026-10-15",
-            serviceUseMethod: "정부24 온라인 신청",
-            onlineUrl: "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/GOV123456",
-            requiredDocuments: "주민등록등본, 임대차계약서"
-          }
-        ]
+        items: {
+          item: [
+            {
+              PBANC_ID: "PBNS202600001",
+              PBANC_NM: "부산 청년 월세 지원 공모",
+              PBANC_INST_NM: "부산광역시",
+              BSNS_PURPS: "부산 거주 청년과 대학생에게 월세를 지원합니다.",
+              SPRT_TRGT_CN: "만 19세 이상 34세 이하 미취업 청년 1인 가구",
+              RCEPT_PD: "2026-09-01 ~ 2026-10-15",
+              REQST_MTH_CN: "온라인 신청",
+              PBANC_URL: "https://www.bojo.go.kr/bojo.do?pbancId=PBNS202600001",
+              SBMSN_DCMNT_CN: "주민등록등본, 임대차계약서"
+            }
+          ]
+        }
       }
     }
   };
@@ -167,9 +169,10 @@ describe("public benefit API repositories", () => {
       fetch: vi.fn(async () => new Response(JSON.stringify(recordedBokjiroResponse), { status: 200 })),
       now: () => new Date("2026-06-09T00:00:00.000Z")
     });
+    const subsidyFetch = vi.fn(async () => new Response(JSON.stringify(recordedSubsidyResponse), { status: 200 }));
     const subsidy = new SubsidyRepository({
       apiKey: "runtime-key-only",
-      fetch: vi.fn(async () => new Response(JSON.stringify(recordedSubsidyResponse), { status: 200 })),
+      fetch: subsidyFetch,
       now: () => new Date("2026-06-09T00:00:00.000Z")
     });
     const duplicateSubsidy = new SubsidyRepository({
@@ -181,19 +184,24 @@ describe("public benefit API repositories", () => {
     const records = await new CompositeBenefitRepository([bokjiro, subsidy, duplicateSubsidy]).search();
 
     expect(records).toHaveLength(2);
-    const subsidyRecord = records.find((record) => record.id === "subsidy24:GOV123456");
+    const requestedUrl = new URL(String(subsidyFetch.mock.calls[0][0]));
+    expect(requestedUrl.pathname).toBe("/1051000/MoefOpenAPI/T_OPD_PBNS");
+    expect(requestedUrl.searchParams.get("resultType")).toBe("json");
+    expect(requestedUrl.searchParams.has("bsnsyear")).toBe(false);
+
+    const subsidyRecord = records.find((record) => record.id === "subsidy24:PBNS202600001");
     expect(subsidyRecord).toMatchObject({
-      title: "부산 청년 월세 지원",
+      title: "부산 청년 월세 지원 공모",
       provider: "부산광역시",
       category: "housing",
       applicationDeadline: "2026-10-15T14:59:59.000Z",
       regionTags: ["부산"],
-      ageRanges: ["twenties", "thirties"],
+      ageRanges: ["thirties", "twenties"],
       householdTypes: ["single", "family"],
       studentOnly: true,
       employmentStatuses: ["unemployed"],
-      applicationUrl: "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/GOV123456",
-      sourceUrl: "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/GOV123456"
+      applicationUrl: "https://www.bojo.go.kr/bojo.do?pbancId=PBNS202600001",
+      sourceUrl: "https://www.bojo.go.kr/bojo.do?pbancId=PBNS202600001"
     });
     expect(BenefitRecordSchema.safeParse(subsidyRecord).success).toBe(true);
   });

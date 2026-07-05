@@ -52,13 +52,12 @@ const SOURCES: SourceConfig[] = [
   {
     name: 'subsidy24',
     envKeys: ['SUBSIDY24_API_KEY', 'DATA_GO_KR_API_KEY'],
-    endpoint: 'https://apis.data.go.kr/1051000/MoefOpenAPI/T_OPD_PRMSCT_SBBGST',
+    endpoint: 'https://apis.data.go.kr/1051000/MoefOpenAPI/T_OPD_PBNS',
     queryParams: (key) => ({
       serviceKey: key,
       pageNo: '1',
       numOfRows: '5',
       resultType: 'json',
-      bsnsyear: new Date().getFullYear().toString(),
     }),
     validate: validateSubsidyShape,
   },

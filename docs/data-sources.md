@@ -14,7 +14,7 @@ Recommendations are candidates, not eligibility decisions, and users must verify
 
 ## Adapter/source URL expectations
 
-- Live adapters currently cover 온통청년, 복지로, and 보조금24-style public service APIs. They require runtime data.go.kr/service keys only (`YOUTH_CENTER_API_KEY`, `BOKJIRO_API_KEY`, `SUBSIDY24_API_KEY`) and fixture tests must remain CI-safe without live keys.
+- Live adapters currently cover 온통청년, 복지로, and 기획예산처/기획재정부 국고보조금 공모사업 (`MoefOpenAPI/T_OPD_PBNS`, exposed as the `subsidy24` adapter for compatibility) public service APIs. They require runtime data.go.kr/service keys only (`YOUTH_CENTER_API_KEY`, `BOKJIRO_API_KEY`, `SUBSIDY24_API_KEY`) and fixture tests must remain CI-safe without live keys.
 - Adapters may normalize only public, non-identifying fields into `BenefitRecord`s: service titles, public provider names, public descriptions, target/eligibility text, application periods/deadlines, public source/application URLs, region/age/household/category signals, and document labels. Never persist service keys, login credentials, resident numbers, certificates, or application identifiers.
 - Every officially supported benefit record must populate `sourceUrl` with an official public page, not a secondary blog or generated summary.
 - The consistency rule `required-source-url` treats a missing `sourceUrl` as an error.

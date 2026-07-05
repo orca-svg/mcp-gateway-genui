@@ -60,8 +60,8 @@ describe('validateBokjiroShape', () => {
 });
 
 describe('validateSubsidyShape', () => {
-  // Live envelope recorded 2026-07-04 from MoefOpenAPI/T_OPD_PRMSCT_SBBGST:
-  // standard wrapped format with response.header + response.body.
+  // MOEF MoefOpenAPI/T_OPD_PBNS uses the standard wrapped format with
+  // response.header + response.body and exposes open-call items under body.items.
   it('accepts the recorded live MOEF envelope', () => {
     const data = {
       response: {
@@ -70,7 +70,7 @@ describe('validateSubsidyShape', () => {
           pageNo: 1,
           totalCount: 66,
           numOfRows: 2,
-          items: { item: [{ REALM_CODE: '010', SECT_NM: '입법및선거관리', BSNSYEAR: '2026' }] },
+          items: { item: [{ PBANC_ID: 'PBNS202600001', PBANC_NM: '공모사업' }] },
         },
       },
     };

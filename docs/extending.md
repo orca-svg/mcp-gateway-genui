@@ -154,7 +154,7 @@ probe and validating the top-level JSON envelope shape.
 |--------|----------------|------------------------|
 | youth-center | `youthPlcyList/getYouthPlcyList` | `result.youthPolicyList` is an array |
 | bokjiro | `NationalWelfareInformationsV001` (XML-only) | raw XML contains `<wantedList>` with `<resultCode>0` |
-| subsidy24 | `MoefOpenAPI/T_OPD_PRMSCT_SBBGST` | `response.body` is an object |
+| subsidy24 | `MoefOpenAPI/T_OPD_PBNS` | `response.body` is an object |
 
 **Contract for new adapters:** when adding a new official source, add a
 corresponding entry to `packages/canary-check/src/run.ts` (the `SOURCES`

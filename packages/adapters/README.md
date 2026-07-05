@@ -11,7 +11,7 @@ into the gateway without changing MCP tool contracts.
 - `YouthCenterRepository` — live adapter for the 온통청년 / 한국고용정보원 청년정책
   API (data.go.kr dataset 15143273).
 - `BokjiroRepository` — live adapter for 복지로 / 한국사회보장정보원 public welfare services.
-- `SubsidyRepository` — live adapter for 보조금24-style government subsidy service lists.
+- `SubsidyRepository` — live adapter for 기획예산처/기획재정부 국고보조금 공모사업 (`MoefOpenAPI/T_OPD_PBNS`), kept under the `subsidy24` source id for compatibility.
 
 ## Live repositories
 

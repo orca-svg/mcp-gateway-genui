@@ -130,7 +130,7 @@ const BOKJIRO_CONFIG: AdapterConfig = {
 const SUBSIDY_CONFIG: AdapterConfig = {
   source: "subsidy24",
   envName: "SUBSIDY24_API_KEY",
-  defaultEndpoint: "https://apis.data.go.kr/1051000/MoefOpenAPI/T_OPD_PRMSCT_SBBGST",
+  defaultEndpoint: "https://apis.data.go.kr/1051000/MoefOpenAPI/T_OPD_PBNS",
   sourceLabel: "Subsidy24",
   defaultProvider: "기획재정부",
   queryParams: (apiKey, pageSize) => ({
@@ -138,7 +138,6 @@ const SUBSIDY_CONFIG: AdapterConfig = {
     pageNo: "1",
     numOfRows: String(pageSize),
     resultType: "json",
-    bsnsyear: new Date().getFullYear().toString(),
   })
 };
 
@@ -204,7 +203,14 @@ abstract class PublicBenefitApiRepository implements BenefitRepository {
       "serviceId",
       "svcId",
       "wlfareInfoId",
-      "bizSeCd"
+      "bizSeCd",
+      "PBANC_ID",
+      "PBANC_NO",
+      "PBANC_SN",
+      "BIZ_ID",
+      "BSNS_ID",
+      "ASST_BSNS_ID",
+      "DTL_BSNS_ID"
     ]);
     const title = firstText(item, [
       "plcyNm",
@@ -215,7 +221,13 @@ abstract class PublicBenefitApiRepository implements BenefitRepository {
       "svcNm",
       "wlfareInfoNm",
       "serviceNm",
-      "jrsdDptAlltNm"
+      "jrsdDptAlltNm",
+      "PBANC_NM",
+      "PBNS_NM",
+      "BSNS_NM",
+      "ASST_BSNS_NM",
+      "DTL_BSNS_NM",
+      "BIZ_NM"
     ]);
     if (!sourceId || !title) return undefined;
 
@@ -229,15 +241,77 @@ abstract class PublicBenefitApiRepository implements BenefitRepository {
         "jrsdDptNm",
         "inqOrgNm",
         "orgNm",
-        "serviceProvider"
+        "serviceProvider",
+        "PBANC_INST_NM",
+        "PBNS_INST_NM",
+        "PBANC_ORG_NM",
+        "MNG_INST_NM",
+        "JURISD_INST_NM",
+        "INST_NM",
+        "MINISTRY_NM"
       ]) ?? this.config.defaultProvider;
-    const summary = firstText(item, ["plcyExplnCn", "sprtCn", "summary", "plcyCn", "servDgst", "svcPpo", "servicePurpose", "wlfareInfoReldCn"]) ?? title;
-    const target = firstText(item, ["sprtTrgtCn", "target", "ageInfo", "earnEtcCn", "trgterIndvdl", "slctCritCn", "supportTarget", "svcPpo"]) ?? "공공서비스 대상자";
+    const summary = firstText(item, [
+      "plcyExplnCn",
+      "sprtCn",
+      "summary",
+      "plcyCn",
+      "servDgst",
+      "svcPpo",
+      "servicePurpose",
+      "wlfareInfoReldCn",
+      "BSNS_PURPS",
+      "BIZ_PURPS",
+      "PBANC_CN",
+      "PBNS_CN",
+      "SUP_CN",
+      "SPRT_CN",
+      "BSNS_CN"
+    ]) ?? title;
+    const target = firstText(item, [
+      "sprtTrgtCn",
+      "target",
+      "ageInfo",
+      "earnEtcCn",
+      "trgterIndvdl",
+      "slctCritCn",
+      "supportTarget",
+      "svcPpo",
+      "SPRT_TRGT_CN",
+      "SUP_TRGT_CN",
+      "TRGT_CN",
+      "APLY_TRGT_CN",
+      "REQST_QUALF_CN",
+      "SLCT_CRTR_CN"
+    ]) ?? "공공서비스 대상자";
     const sourceUrl = normalizeUrl(
-      firstText(item, ["refUrlAddr1", "refUrlAddr2", "sourceUrl", "plcyUrlAddr", "servDtlLink", "serviceUrl", "dtlUrl", "onlineUrl"]),
+      firstText(item, [
+        "refUrlAddr1",
+        "refUrlAddr2",
+        "sourceUrl",
+        "plcyUrlAddr",
+        "servDtlLink",
+        "serviceUrl",
+        "dtlUrl",
+        "onlineUrl",
+        "PBANC_URL",
+        "PBNS_URL",
+        "DTL_URL",
+        "HMPG_URL",
+        "URL"
+      ]),
       fallbackSourceUrl(this.config.source, sourceId)
     );
-    const applicationUrl = normalizeUrl(firstText(item, ["aplyUrlAddr", "applicationUrl", "onlineUrl", "svcUrl", "servDtlLink"]));
+    const applicationUrl = normalizeUrl(firstText(item, [
+      "aplyUrlAddr",
+      "applicationUrl",
+      "onlineUrl",
+      "svcUrl",
+      "servDtlLink",
+      "REQST_URL",
+      "APLY_URL",
+      "PBANC_URL",
+      "PBNS_URL"
+    ]));
 
     const parsed = BenefitRecordSchema.safeParse({
       id: `${this.config.source}:${sourceId}`,
@@ -246,21 +320,51 @@ abstract class PublicBenefitApiRepository implements BenefitRepository {
       category: deriveCategory(item),
       summary,
       target,
-      eligibility: splitList(firstText(item, ["sprtTrgtCn", "earnEtcCn", "ageInfo", "trgterIndvdl", "slctCritCn", "supportTarget"])),
-      applicationPeriod: firstText(item, ["aplyYmd", "aplyPrd", "applicationPeriod", "reqstBeginEndDe", "svcAvailPrd", "applicationDueDate"]),
+      eligibility: splitList(firstText(item, [
+        "sprtTrgtCn",
+        "earnEtcCn",
+        "ageInfo",
+        "trgterIndvdl",
+        "slctCritCn",
+        "supportTarget",
+        "SPRT_TRGT_CN",
+        "SUP_TRGT_CN",
+        "TRGT_CN",
+        "APLY_TRGT_CN",
+        "REQST_QUALF_CN",
+        "SLCT_CRTR_CN"
+      ])),
+      applicationPeriod: firstText(item, [
+        "aplyYmd",
+        "aplyPrd",
+        "applicationPeriod",
+        "reqstBeginEndDe",
+        "svcAvailPrd",
+        "applicationDueDate",
+        "REQST_PD",
+        "REQST_PERIOD",
+        "RCEPT_PD",
+        "RCEPT_PERIOD",
+        "PBANC_PD",
+        "PBNS_PD",
+        "PBANC_BEGIN_DE",
+        "PBANC_END_DE",
+        "RCEPT_BEGIN_DE",
+        "RCEPT_END_DE"
+      ]),
       applicationDeadline: deriveApplicationDeadline(item),
-      documents: splitList(firstText(item, ["sbmsnDcmntCn", "documents", "requiredDocuments", " 구비서류", "pprsUpdtCn"])).map((label, index) => ({
+      documents: splitList(firstText(item, ["sbmsnDcmntCn", "documents", "requiredDocuments", " 구비서류", "pprsUpdtCn", "SBMSN_DCMNT_CN", "REQST_DCMNT_CN", "PPRS_CN"])).map((label, index) => ({
         id: `document-${index + 1}`,
         label,
         required: true,
         source: this.config.source
       })),
-      applicationMethods: splitList(firstText(item, ["aplyMthdCn", "applicationMethods", "reqstMthPapers", "serviceUseMethod", "svcUseMthd"])),
+      applicationMethods: splitList(firstText(item, ["aplyMthdCn", "applicationMethods", "reqstMthPapers", "serviceUseMethod", "svcUseMthd", "REQST_MTH_CN", "APLY_MTHD_CN", "REQST_MTH", "APLY_MTHD"])),
       applicationUrl,
       sourceUrl,
       lastFetchedAt: this.now().toISOString(),
       evidence: [],
-      searchableText: [summary, target, firstText(item, ["plcyKywdNm", "keywords", "svcPpo", "servDgst"]), provider]
+      searchableText: [summary, target, firstText(item, ["plcyKywdNm", "keywords", "svcPpo", "servDgst", "PBANC_NM", "BSNS_NM", "ASST_BSNS_NM"]), provider]
         .filter(Boolean)
         .join(" "),
       regionTags: deriveRegions(item),
@@ -381,7 +485,7 @@ function fallbackSourceUrl(source: AdapterSource, id: string): string {
   if (source === "bokjiro") {
     return `https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=${encodeURIComponent(id)}`;
   }
-  return `https://www.gov.kr/portal/rcvfvrSvc/dtlEx/${encodeURIComponent(id)}`;
+  return `https://www.data.go.kr/data/15156853/openapi.do#${encodeURIComponent(id)}`;
 }
 
 function deriveRegions(item: SourceItem): string[] {
@@ -396,7 +500,18 @@ function deriveRegions(item: SourceItem): string[] {
     "jurMnofNm",
     "jrsdDptNm",
     "addr",
-    "localArea"
+    "localArea",
+    "PBANC_INST_NM",
+    "PBNS_INST_NM",
+    "PBANC_ORG_NM",
+    "MNG_INST_NM",
+    "JURISD_INST_NM",
+    "INST_NM",
+    "BSNS_PURPS",
+    "PBANC_CN",
+    "PBNS_CN",
+    "SUP_CN",
+    "SPRT_CN"
   ]);
   const regions = ["서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종", "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"];
   return regions.filter((region) => text.includes(region));
@@ -421,7 +536,7 @@ function deriveAgeRanges(item: SourceItem): AgeRange[] {
       })
       .map(([range]) => range);
   }
-  const text = joinedText(item, ["ageInfo", "sprtTrgtCn", "plcyExplnCn", "trgterIndvdl", "slctCritCn", "servDgst", "svcPpo"]);
+  const text = joinedText(item, ["ageInfo", "sprtTrgtCn", "plcyExplnCn", "trgterIndvdl", "slctCritCn", "servDgst", "svcPpo", "SPRT_TRGT_CN", "SUP_TRGT_CN", "TRGT_CN", "APLY_TRGT_CN", "REQST_QUALF_CN", "SLCT_CRTR_CN", "BSNS_PURPS", "PBANC_CN", "PBNS_CN", "SUP_CN", "SPRT_CN"]);
   const ages = new Set<AgeRange>();
   for (const [range, start] of ranges) {
     if (text.includes(`${Math.floor(start / 10) * 10}대`)) ages.add(range);
@@ -440,7 +555,7 @@ function deriveAgeRanges(item: SourceItem): AgeRange[] {
 }
 
 function deriveHouseholdTypes(item: SourceItem): HouseholdType[] {
-  const text = joinedText(item, ["earnEtcCn", "sprtTrgtCn", "plcyExplnCn", "trgterIndvdl", "slctCritCn", "supportTarget", "servDgst", "svcPpo"]);
+  const text = joinedText(item, ["earnEtcCn", "sprtTrgtCn", "plcyExplnCn", "trgterIndvdl", "slctCritCn", "supportTarget", "servDgst", "svcPpo", "SPRT_TRGT_CN", "SUP_TRGT_CN", "TRGT_CN", "APLY_TRGT_CN", "REQST_QUALF_CN", "SLCT_CRTR_CN", "BSNS_PURPS", "PBANC_CN", "PBNS_CN", "SUP_CN", "SPRT_CN"]);
   const types: HouseholdType[] = [];
   if (text.includes("1인") || text.includes("단독")) types.push("single");
   if (text.includes("부부") || text.includes("신혼")) types.push("couple");
@@ -450,7 +565,7 @@ function deriveHouseholdTypes(item: SourceItem): HouseholdType[] {
 }
 
 function deriveEmploymentStatuses(item: SourceItem): EmploymentStatus[] {
-  const text = joinedText(item, ["plcyKywdNm", "sprtTrgtCn", "plcyExplnCn", "earnEtcCn", "trgterIndvdl", "slctCritCn", "supportTarget", "servDgst", "svcPpo"]);
+  const text = joinedText(item, ["plcyKywdNm", "sprtTrgtCn", "plcyExplnCn", "earnEtcCn", "trgterIndvdl", "slctCritCn", "supportTarget", "servDgst", "svcPpo", "SPRT_TRGT_CN", "SUP_TRGT_CN", "TRGT_CN", "APLY_TRGT_CN", "REQST_QUALF_CN", "SLCT_CRTR_CN", "BSNS_PURPS", "PBANC_CN", "PBNS_CN", "SUP_CN", "SPRT_CN", "PBANC_NM", "BSNS_NM"]);
   const statuses: EmploymentStatus[] = [];
   if (text.includes("미취업") || text.includes("구직") || text.includes("실업") || text.includes("실직")) statuses.push("unemployed");
   if (text.includes("재직") || text.includes("근로") || text.includes("취업자") || text.includes("직장")) statuses.push("employed");
@@ -468,7 +583,17 @@ function deriveApplicationDeadline(item: SourceItem): string | undefined {
     "svcAvailPrd",
     "applicationDueDate",
     "dueDate",
-    "reqstEndDe"
+    "reqstEndDe",
+    "REQST_PD",
+    "REQST_PERIOD",
+    "RCEPT_PD",
+    "RCEPT_PERIOD",
+    "PBANC_PD",
+    "PBNS_PD",
+    "PBANC_END_DE",
+    "RCEPT_END_DE",
+    "REQST_END_DE",
+    "APLY_END_DE"
   ]);
   if (!raw) return undefined;
 
@@ -488,7 +613,7 @@ function deriveApplicationDeadline(item: SourceItem): string | undefined {
 }
 
 function deriveCategory(item: SourceItem): BenefitCategory {
-  const text = joinedText(item, ["plcyKywdNm", "plcyExplnCn", "sprtCn", "plcyNm", "servDgst", "svcPpo", "servNm", "svcNm"]);
+  const text = joinedText(item, ["plcyKywdNm", "plcyExplnCn", "sprtCn", "plcyNm", "servDgst", "svcPpo", "servNm", "svcNm", "PBANC_NM", "PBNS_NM", "BSNS_NM", "ASST_BSNS_NM", "BSNS_PURPS", "BIZ_PURPS", "PBANC_CN", "PBNS_CN", "SUP_CN", "SPRT_CN", "BSNS_CN"]);
   if (text.includes("취업") || text.includes("일자리") || text.includes("구직")) return "employment";
   if (text.includes("주거") || text.includes("월세") || text.includes("임대")) return "housing";
   if (text.includes("교육") || text.includes("장학") || text.includes("훈련")) return "education";
