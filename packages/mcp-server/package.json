@@ -1,6 +1,6 @@
 {
   "name": "@mcp-gen-ui/mcp-server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "stdio MCP server exposing mcp-gen-ui public-benefit discovery tools.",
   "license": "Apache-2.0",
   "author": "Team KOI",
