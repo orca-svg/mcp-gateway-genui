@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "benefit-detail.v2",
+  "dataStatus": {
+    "mode": "fixture",
+    "partial": false,
+    "sources": [
+      {
+        "sourceId": "fixture-benefits",
+        "status": "ok",
+        "retrievedAt": "2026-07-09T23:59:00.000Z",
+        "recordCount": 1,
+        "adapterVersion": "0.3.0"
+      }
+    ]
+  },
+  "result": {
+    "id": "fixture:benefit-001",
+    "title": "서울 청년 주거 지원",
+    "provider": "서울특별시",
+    "category": "housing",
+    "summary": "서울 거주 청년의 주거비 부담을 줄이는 지원 후보입니다.",
+    "assessment": {
+      "status": "candidate",
+      "constraints": [
+        {
+          "dimension": "region",
+          "outcome": "match",
+          "basis": "authoritative_structured",
+          "ruleId": "fixture.region",
+          "ruleVersion": "1.0.0",
+          "sourceFields": [
+            "regionCode"
+          ],
+          "explanation": "구조화된 지역 조건이 프로필과 일치합니다."
+        },
+        {
+          "dimension": "age",
+          "outcome": "match",
+          "basis": "authoritative_structured",
+          "ruleId": "fixture.age",
+          "ruleVersion": "1.0.0",
+          "sourceFields": [
+            "minimumAge",
+            "maximumAge"
+          ],
+          "explanation": "구조화된 연령대 조건이 프로필과 일치합니다."
+        }
+      ],
+      "missingInfo": []
+    },
+    "ranking": {
+      "score": 0.86,
+      "breakdown": [
+        {
+          "dimension": "region",
+          "signal": 1,
+          "weight": 1,
+          "contribution": 1,
+          "explanation": "지역 관련성 신호가 일치합니다."
+        },
+        {
+          "dimension": "query",
+          "signal": 0.72,
+          "weight": 1,
+          "contribution": 0.72,
+          "explanation": "검색어와 설명의 관련성이 높습니다."
+        }
+      ]
+    },
+    "provenance": [
+      {
+        "field": "/title",
+        "sourceId": "fixture-benefits",
+        "sourceRecordId": "fixture-001",
+        "authority": "authoritative_structured",
+        "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "observedAt": "2026-07-09T23:59:00.000Z",
+        "sourceRevision": "fixture-2026-07-10",
+        "license": "Public fixture data",
+        "attribution": "mcp-gen-ui fixture"
+      }
+    ],
+    "links": [
+      {
+        "rel": "source",
+        "url": "https://www.gov.kr/portal/service/example",
+        "official": true,
+        "health": "verified",
+        "verifiedAt": "2026-07-09T23:59:00.000Z",
+        "verificationMethod": "Exact registered origin fixture check"
+      }
+    ],
+    "freshness": {
+      "status": "fresh",
+      "observedAt": "2026-07-09T23:59:00.000Z",
+      "staleAfter": "2026-08-09T23:59:00.000Z"
+    },
+    "target": "서울 거주 청년 중 공식 공고의 세부 요건을 충족하는 신청자",
+    "eligibility": [
+      "서울 거주",
+      "공고별 연령과 소득 기준 확인"
+    ],
+    "applicationPeriod": "공고별 상이",
+    "applicationDeadline": "2026-12-31T14:59:59.000Z",
+    "fee": "없음",
+    "processingTime": "공고별 상이",
+    "documents": [
+      {
+        "id": "document:residence-proof",
+        "label": "거주지 확인 서류",
+        "required": true,
+        "source": "fixture-benefits"
+      }
+    ],
+    "applicationMethods": [
+      "공식 페이지에서 온라인 신청"
+    ]
+  },
+  "generatedAt": "2026-07-10T00:00:00.000Z"
+}

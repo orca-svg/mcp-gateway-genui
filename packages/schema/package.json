@@ -14,7 +14,9 @@
     "url": "https://github.com/orca-svg/mcp-gateway-genui/issues"
   },
   "files": [
-    "dist"
+    "dist",
+    "schema",
+    "fixtures"
   ],
   "publishConfig": {
     "access": "public",
@@ -28,7 +30,9 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./schema/*": "./schema/*",
+    "./fixtures/*": "./fixtures/*"
   },
   "scripts": {
     "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
@@ -38,7 +42,10 @@
     "export:schema": "pnpm build && node dist/export-json-schema.js"
   },
   "dependencies": {
-    "zod": "^3.24.1",
-    "zod-to-json-schema": "^3.24.1"
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
   }
 }

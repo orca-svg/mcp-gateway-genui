@@ -63,7 +63,8 @@ describe('public API documentation', () => {
     expect(dataSources).toContain('국가장학금');
     expect(dataSources).toContain('국민취업지원제도');
     expect(dataSources).toContain('공공누리');
-    expect(dataSources).toContain('sourceUrl');
+    expect(dataSources).toContain('links[]');
+    expect(dataSources).toContain('field-level provenance');
     expect(security).toContain('within 72 hours');
     expect(security).toContain('within 14 days');
   });

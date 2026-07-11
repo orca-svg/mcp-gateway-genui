@@ -33,7 +33,7 @@ export function App() {
           <p className="eyebrow">MCP-Gen UI Gateway</p>
           <h1>공공 혜택 탐색</h1>
         </div>
-        <span className="status">Fixture demo</span>
+        <span className="status">Data mode: {scenario.search.dataStatus.mode}</span>
       </header>
 
       <div className="areas">
@@ -71,6 +71,9 @@ export function App() {
             <span className="run-dot" aria-hidden="true" />
             {runStatusLabel(view.runStatus)}
           </p>
+          {view.compatibilityError && (
+            <p role="alert" className="source-warn">{view.compatibilityError}</p>
+          )}
         </section>
 
         <section className="area results-area" aria-label="추천 결과">
@@ -88,7 +91,7 @@ export function App() {
                   <span className="provider">{card.provider}</span>
                   <span className="card-title">{card.title}</span>
                   <span className="badge">{statusLabel(card.status)}</span>
-                  <span className="score">적합도 {Math.round(card.score * 100)}%</span>
+                  <span className="score">상대 관련도 {Math.round(card.score * 100)}%</span>
                   <span className="card-summary">{card.summary}</span>
                 </button>
               </li>
@@ -123,61 +126,39 @@ export function App() {
               <h4>신청 단계</h4>
               <ol className="steps">
                 {view.prep.steps.map((step) => (
-                  <li key={step.title}>
+                  <li key={step.id}>
                     <strong>{step.title}</strong>
                     <span>{step.description}</span>
                   </li>
                 ))}
               </ol>
-              {view.prep.sourceVerified ? (
+              {view.prep.sourceLink?.health === "verified" ? (
                 <div className="source-actions">
                   <a
                     className="source-link"
-                    href={view.prep.sourceUrl}
+                    href={view.prep.sourceLink.url}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     공식 페이지로 이동 ↗
                   </a>
-                  <a
-                    className="source-alt"
-                    href={view.prep.govSearchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    정부24 통합검색으로 찾기
-                  </a>
                 </div>
-              ) : (
+              ) : view.prep.sourceLink ? (
                 <div className="source-actions">
                   <p className="source-warn">
-                    원본 서비스 링크가 만료되었을 수 있어 정부 공식 검색을 권합니다.
+                    이 공식 링크의 상태는 {view.prep.sourceLink.health}입니다. 이동 후 최신 공고를 직접 확인하세요.
                   </p>
                   <a
                     className="source-link"
-                    href={view.prep.govSearchUrl}
+                    href={view.prep.sourceLink.url}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    정부24 통합검색 ↗
-                  </a>
-                  <a
-                    className="source-alt source-stale"
-                    href={view.prep.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    원본 링크 열기 (만료 가능)
-                  </a>
-                  <a
-                    className="source-web"
-                    href={view.prep.webSearchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    그래도 못 찾으면 웹에서 검색
+                    공식 출처 열기 ↗
                   </a>
                 </div>
+              ) : (
+                <p className="source-warn">검증된 공식 링크가 없어 자동 이동을 제공하지 않습니다.</p>
               )}
             </>
           ) : (
@@ -230,17 +211,19 @@ export function App() {
 function statusLabel(status: string): string {
   if (status === "candidate") return "후보";
   if (status === "needs_more_info") return "확인 필요";
-  return "부적합";
+  return "조건 충돌 감지";
 }
 
 function runStatusLabel(status: RunStatus): string {
   if (status === "success") return "정상 응답";
-  if (status === "partial") return "일부 출처 대체(폴백)";
+  if (status === "partial") return "일부 출처 응답 실패";
   return "응답 실패";
 }
 
 function sourceStatusLabel(status: DemoSourceStatus): string {
   if (status === "ok") return "정상";
-  if (status === "cached") return "캐시";
-  return "폴백";
+  if (status === "partial") return "일부 유효";
+  if (status === "timeout") return "시간 초과";
+  if (status === "invalid_payload") return "응답 형식 오류";
+  return "사용 불가";
 }

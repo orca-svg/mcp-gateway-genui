@@ -23,6 +23,7 @@ describe('release automation configuration', () => {
     expect(changesetConfig.linked).toContainEqual([
       '@mcp-gen-ui/schema',
       '@mcp-gen-ui/core',
+      '@mcp-gen-ui/adapters',
       '@mcp-gen-ui/mcp-server',
     ]);
     expect(changesetConfig.ignore).toContain('@mcp-gen-ui/demo-ui');

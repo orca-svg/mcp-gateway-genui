@@ -1,28 +1,44 @@
+import type { SourceObservation } from '@mcp-gen-ui/schema';
+
 export interface CanaryResult {
   source: string;
-  status: 'ok' | 'skipped' | 'drift' | 'error';
+  status: 'ok' | 'skipped' | 'partial' | 'drift' | 'error';
   detail?: string;
 }
 
-export function validateYouthCenterShape(data: unknown): boolean {
-  if (typeof data !== 'object' || data === null) return false;
-  const d = data as Record<string, unknown>;
-  const result = d.result as Record<string, unknown> | undefined;
-  return Array.isArray(result?.youthPolicyList);
-}
+/**
+ * Convert the same source observation emitted to MCP clients into a canary result.
+ * A deliberately bounded first page is healthy-but-partial; rejected records are
+ * treated as drift because they indicate that the public mapping no longer holds.
+ */
+export function classifyObservation(observation: SourceObservation): CanaryResult {
+  const base = { source: observation.sourceId };
 
-// NationalWelfarelistV001 is XML-only; validate the raw response text.
-export function validateBokjiroShape(data: unknown): boolean {
-  if (typeof data !== 'string') return false;
-  return data.includes('<wantedList>') && /<resultCode>0<\/resultCode>/.test(data);
-}
+  if (observation.status === 'ok') {
+    return { ...base, status: 'ok' };
+  }
 
-export function validateSubsidyShape(data: unknown): boolean {
-  if (typeof data !== 'object' || data === null) return false;
-  const d = data as Record<string, unknown>;
-  const response = d.response as Record<string, unknown> | undefined;
-  const body = response?.body;
-  return typeof body === 'object' && body !== null;
+  if (
+    observation.status === 'partial' &&
+    observation.recordCount > 0 &&
+    observation.errorCode === 'page_truncated'
+  ) {
+    return { ...base, status: 'partial', detail: observation.errorCode };
+  }
+
+  if (observation.status === 'invalid_payload' || observation.status === 'partial') {
+    return {
+      ...base,
+      status: 'drift',
+      detail: observation.errorCode ?? observation.status,
+    };
+  }
+
+  return {
+    ...base,
+    status: 'error',
+    detail: observation.errorCode ?? observation.status,
+  };
 }
 
 export function buildIssueTitle(source: string): string {
@@ -30,5 +46,5 @@ export function buildIssueTitle(source: string): string {
 }
 
 export function hasLiveFailure(results: CanaryResult[]): boolean {
-  return results.some((r) => r.status === 'drift' || r.status === 'error');
+  return results.some((result) => result.status === 'drift' || result.status === 'error');
 }

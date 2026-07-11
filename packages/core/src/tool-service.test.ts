@@ -1,226 +1,430 @@
+import { createRequire } from "node:module";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BenefitRecord } from "@mcp-gen-ui/schema";
-import { kstDeadlineToUtc } from "./deadlines.js";
+import type {
+  BenefitRecord,
+  BenefitRepositoryDetailResult,
+  BenefitRepositoryResult,
+  DataStatus
+} from "@mcp-gen-ui/schema";
+import type { DatabaseSync as DatabaseSyncInstance } from "node:sqlite";
+import { describe, expect, it, vi } from "vitest";
+import { GatewayError } from "./errors.js";
+import { fixtureBenefits } from "./fixtures.js";
+import { BenefitIngestionService } from "./ingestion-service.js";
+import type { BenefitRepository } from "./repository.js";
 import { FixtureBenefitRepository } from "./repository.js";
 import { SnapshotStore } from "./sqlite-store.js";
-import { BenefitToolService, NON_ELIGIBILITY_DISCLAIMER } from "./tool-service.js";
+import {
+  BenefitToolService,
+  NON_ELIGIBILITY_DISCLAIMER
+} from "./tool-service.js";
 
-describe("BenefitToolService", () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+const nodeRequire = createRequire(import.meta.url);
+const { DatabaseSync } = nodeRequire("node:sqlite") as typeof import("node:sqlite");
 
-  it("lists injectable persona presets for host selection", async () => {
-    const service = new BenefitToolService(new FixtureBenefitRepository(), undefined, {
-      personas: {
-        custom: {
-          id: "custom",
-          description: "Custom embedder persona",
-          weights: {
-            region: 1,
-            age: 1,
-            student: 1,
-            employment: 1,
-            household: 1,
-            category: 2,
-            query: 0
-          }
-        }
+const NOW = "2026-07-10T00:00:00.000Z";
+
+describe("BenefitToolService v2", () => {
+  it("rejects unknown profile fields and unsafe query normalization before repository access", async () => {
+    const search = vi.fn(async (): Promise<BenefitRepositoryResult> => ({
+      records: fixtureBenefits,
+      dataStatus: fixtureDataStatus(fixtureBenefits.length)
+    }));
+    const repository: BenefitRepository = {
+      mode: "fixture",
+      search,
+      async getById(): Promise<BenefitRepositoryDetailResult> {
+        return { dataStatus: fixtureDataStatus(0) };
       }
-    });
+    };
+    const service = fixedService(repository);
 
-    await expect(service.listPersonas()).resolves.toEqual([
-      {
-        id: "custom",
-        description: "Custom embedder persona",
-        weights: {
-          region: 1,
-          age: 1,
-          student: 1,
-          employment: 1,
-          household: 1,
-          category: 2,
-          query: 0
-        }
-      }
-    ]);
+    await expect(
+      service.searchBenefits({
+        query: "청년 주거",
+        profile: { regionCode: "KR-11", email: "person@example.test" }
+      })
+    ).rejects.toMatchObject({ name: "ZodError" });
+    await expect(
+      service.searchBenefits({ query: " 청년 주거 ", profile: {} })
+    ).rejects.toMatchObject({ name: "ZodError" });
+    await expect(
+      service.searchBenefits({
+        query: "청년 주거",
+        profile: {},
+        residentNumber: "000000-0000000"
+      })
+    ).rejects.toMatchObject({ name: "ZodError" });
+    expect(search).not.toHaveBeenCalled();
   });
 
-  it("scores upcoming deadlines without the synthetic query dimension", async () => {
-    const service = new BenefitToolService(
-      new FixtureBenefitRepository([deadlineBenefit("deadline", daysFromNow(5))])
-    );
-
-    const response = await service.getUpcomingDeadlines({ profile: {}, withinDays: 30 });
-
-    expect(response.results[0]?.scoreBreakdown).toContainEqual(
-      expect.objectContaining({ dimension: "query", weight: 0, contribution: 0 })
-    );
-  });
-
-  it("groups fixture-backed benefit results by recommendation status", async () => {
-    const service = new BenefitToolService(new FixtureBenefitRepository());
+  it("returns the strict v2 search envelope with ranking policy and visible fixture status", async () => {
+    const service = fixedFixtureService();
 
     const response = await service.searchBenefits({
-      query: "서울 대학생 주거 지원",
+      query: "청년 주거",
       profile: {
-        region: "서울",
-        ageRange: "twenties",
-        studentStatus: "student",
-        interests: ["housing", "education"]
+        regionCode: "KR-11",
+        ageBand: "twenties",
+        studentStatus: "not_student",
+        employmentStatus: "unemployed",
+        householdType: "single",
+        interests: ["housing"],
+        persona: "general"
       }
     });
 
-    expect(response.results[0]?.status).toBe("candidate");
-    expect(response.results[0]?.score).toBeGreaterThan(0);
-    expect(response.results[0]?.scoreBreakdown.length).toBeGreaterThan(0);
-    expect(response.results.map((result) => result.id)).toContain(
-      "seoul-youth-rent-support"
-    );
-  });
-
-  it("throws an explicit error for an unknown benefit id", async () => {
-    const service = new BenefitToolService(new FixtureBenefitRepository());
-    await expect(service.getBenefitDetail("does-not-exist")).rejects.toThrow(
-      /Benefit not found/
-    );
-  });
-
-  it("builds a checklist with a non-eligibility caveat", async () => {
-    const service = new BenefitToolService(new FixtureBenefitRepository());
-    const checklist = await service.buildChecklist("seoul-youth-rent-support");
-
-    expect(checklist.items.length).toBeGreaterThan(0);
-    expect(checklist.caveats[0]).toBe(NON_ELIGIBILITY_DISCLAIMER);
-  });
-
-  it("returns user-action-only application guidance", async () => {
-    const service = new BenefitToolService(new FixtureBenefitRepository());
-    const guide = await service.getApplicationGuide("national-scholarship");
-
-    expect(guide.steps).toHaveLength(3);
-    expect(guide.steps.every((step) => step.requiresUserAction)).toBe(true);
-    expect(guide.safetyNotice).toContain("대신 수행하지 않습니다");
-  });
-
-  it("records SQLite change logs while serving tool calls", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "mcp-gen-ui-gateway-"));
-    const store = new SnapshotStore(join(dir, "test.db"));
-    const service = new BenefitToolService(new FixtureBenefitRepository(), store);
-
-    await service.searchBenefits({
-      query: "장학금",
-      profile: { studentStatus: "student" }
+    expect(response).toMatchObject({
+      schemaVersion: "benefit-search.v2",
+      query: "청년 주거",
+      rankingPolicy: {
+        scoreMeaning: "relative_relevance_not_eligibility",
+        persona: "general"
+      },
+      dataStatus: {
+        mode: "fixture",
+        partial: false,
+        sources: [
+          expect.objectContaining({
+            sourceId: "fixture-benefits",
+            status: "ok",
+            recordCount: fixtureBenefits.length,
+            adapterVersion: "2.0.0-fixture"
+          })
+        ]
+      },
+      generatedAt: NOW
     });
-    const log = await service.getChangeLog();
-
-    expect(log.entries.length).toBeGreaterThan(0);
-    expect(log.entries.every((entry) => entry.entityType === "benefit")).toBe(true);
-    store.close();
+    expect(response.results).toHaveLength(fixtureBenefits.length);
+    expect(response.results[0]).toEqual(
+      expect.objectContaining({
+        assessment: expect.objectContaining({ status: expect.any(String) }),
+        ranking: expect.objectContaining({
+          score: expect.any(Number),
+          breakdown: expect.any(Array)
+        }),
+        provenance: expect.any(Array),
+        links: expect.any(Array)
+      })
+    );
   });
 
-  it("classifies repeated snapshots of identical data as unchanged", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "mcp-gen-ui-gateway-"));
-    const store = new SnapshotStore(join(dir, "test.db"));
-    const service = new BenefitToolService(new FixtureBenefitRepository(), store);
+  it("throws a retryable GatewayError when every source fails", async () => {
+    const dataStatus: DataStatus = {
+      mode: "live",
+      partial: false,
+      sources: [
+        {
+          sourceId: "broken-source",
+          status: "unavailable",
+          retrievedAt: NOW,
+          recordCount: 0,
+          errorCode: "upstream_unavailable",
+          adapterVersion: "adapter-2"
+        }
+      ]
+    };
+    const repository: BenefitRepository = {
+      mode: "live",
+      async search() {
+        return { records: [], dataStatus };
+      },
+      async getById() {
+        return { dataStatus };
+      }
+    };
 
-    await service.searchBenefits({ query: "장학금", profile: {} });
-    await service.searchBenefits({ query: "장학금", profile: {} });
-    const log = await service.getChangeLog("national-scholarship");
+    let error: GatewayError | undefined;
+    try {
+      await fixedService(repository).searchBenefits({ query: "주거 지원" });
+    } catch (value) {
+      error = value as GatewayError;
+    }
 
-    expect(log.entries.some((entry) => entry.changeType === "created")).toBe(true);
-    expect(log.entries.some((entry) => entry.changeType === "unchanged")).toBe(true);
-    store.close();
+    expect(error).toBeInstanceOf(GatewayError);
+    expect(error).toMatchObject({
+      code: "all_sources_failed",
+      retryable: true,
+      dataStatus
+    });
   });
 
-  it("returns applicable deadline-bearing benefits sorted by deadline and filtered by window", async () => {
-    const soon = daysFromNow(5);
-    const later = daysFromNow(20);
-    const outsideWindow = daysFromNow(45);
-    const benefits = [
-      deadlineBenefit("later-seoul", later, { regionTags: ["서울"] }),
-      deadlineBenefit("soon-seoul", soon, { regionTags: ["서울"] }),
-      deadlineBenefit("outside-window", outsideWindow, { regionTags: ["서울"] }),
-      deadlineBenefit("busan-only", daysFromNow(3), { regionTags: ["부산"] }),
-      deadlineBenefit("no-deadline", undefined, { regionTags: ["서울"] })
-    ];
-    const service = new BenefitToolService(new FixtureBenefitRepository(benefits));
-
-    const response = await service.getUpcomingDeadlines({
-      profile: { region: "서울" },
-      withinDays: 30
+  it("retains authoritative conflicts as candidates for user verification", async () => {
+    const response = await fixedFixtureService().searchBenefits({
+      query: "서울 월세",
+      profile: {
+        regionCode: "KR-26",
+        ageBand: "fifties",
+        householdType: "family"
+      }
     });
 
-    expect(response.withinDays).toBe(30);
-    expect(response.results.map((benefit) => benefit.id)).toEqual([
-      "soon-seoul",
-      "later-seoul"
-    ]);
-    expect(response.results.map((benefit) => benefit.applicationDeadline)).toEqual([
-      soon,
-      later
-    ]);
-    expect(response.results.every((benefit) => benefit.status !== "not_applicable")).toBe(
-      true
+    const conflict = response.results.find(
+      (candidate) => candidate.id === "seoul-youth-rent-support"
     );
+    expect(conflict).toBeDefined();
+    expect(conflict?.assessment.status).toBe("conflict_detected");
     expect(
-      response.results.every((benefit) => benefit.scoreBreakdown.length > 0)
+      conflict?.assessment.constraints.some(
+        (constraint) =>
+          constraint.basis === "authoritative_structured" &&
+          constraint.outcome === "conflict"
+      )
     ).toBe(true);
   });
 
-  it("keeps KST-authored deadlines inside the window through the end of the KST day", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-07-14T14:59:59.000Z"));
-    const kstDeadline = kstDeadlineToUtc("2026-07-15");
-    const benefits = [deadlineBenefit("kst-deadline", kstDeadline, { regionTags: ["서울"] })];
-    const service = new BenefitToolService(new FixtureBenefitRepository(benefits));
+  it("returns detail, checklist, and guide envelopes with direct provenance and links", async () => {
+    const service = fixedFixtureService();
+    const id = "seoul-youth-rent-support";
+    const source = fixtureBenefits.find((record) => record.id === id)!;
 
-    const response = await service.getUpcomingDeadlines({
-      profile: { region: "서울" },
-      withinDays: 1
+    const detail = await service.getBenefitDetail({ id });
+    const checklist = await service.buildChecklist({ benefitId: id });
+    const guide = await service.getApplicationGuide({ benefitId: id });
+
+    expect(detail).toMatchObject({
+      schemaVersion: "benefit-detail.v2",
+      dataStatus: { mode: "fixture" },
+      result: {
+        id,
+        documents: source.documents,
+        provenance: source.provenance,
+        links: source.links
+      },
+      generatedAt: NOW
+    });
+    expect(checklist).toMatchObject({
+      schemaVersion: "application-checklist.v2",
+      benefitId: id,
+      items: source.documents,
+      caveats: [NON_ELIGIBILITY_DISCLAIMER],
+      provenance: source.provenance,
+      links: source.links,
+      generatedAt: NOW
+    });
+    expect(guide).toMatchObject({
+      schemaVersion: "application-guide.v2",
+      benefitId: id,
+      provenance: source.provenance,
+      links: source.links,
+      generatedAt: NOW
+    });
+    expect(guide.steps).toHaveLength(3);
+    expect(guide.steps.every((step) => step.requiresUserAction)).toBe(true);
+    expect(guide.safetyNotice).toContain("does not log in");
+  });
+
+  it("validates deadline bounds and returns in-window candidates by ascending deadline", async () => {
+    const records = [
+      deadlineRecord("deadline-later", "2026-07-15T00:00:00.000Z"),
+      deadlineRecord("deadline-sooner", "2026-07-12T00:00:00.000Z"),
+      deadlineRecord("deadline-boundary", "2026-08-09T00:00:00.000Z"),
+      deadlineRecord("deadline-outside", "2026-08-10T00:00:00.000Z"),
+      deadlineRecord("deadline-past", "2026-07-09T00:00:00.000Z"),
+      deadlineRecord("deadline-unknown")
+    ];
+    const service = fixedFixtureService(records);
+
+    await expect(service.getUpcomingDeadlines({ withinDays: 0 })).rejects.toMatchObject({
+      name: "ZodError"
+    });
+    await expect(service.getUpcomingDeadlines({ withinDays: 366 })).rejects.toMatchObject({
+      name: "ZodError"
     });
 
-    expect(response.results.map((benefit) => benefit.id)).toEqual(["kst-deadline"]);
-    expect(response.results[0]?.applicationDeadline).toBe("2026-07-15T14:59:59.000Z");
+    const response = await service.getUpcomingDeadlines({ withinDays: 30 });
+    expect(response).toMatchObject({
+      schemaVersion: "upcoming-deadlines.v2",
+      withinDays: 30,
+      dataStatus: { mode: "fixture" },
+      rankingPolicy: { scoreMeaning: "relative_relevance_not_eligibility" },
+      generatedAt: NOW
+    });
+    expect(response.results.map((candidate) => candidate.id)).toEqual([
+      "deadline-sooner",
+      "deadline-later",
+      "deadline-boundary"
+    ]);
+    expect(response.results.map((candidate) => candidate.applicationDeadline)).toEqual([
+      "2026-07-12T00:00:00.000Z",
+      "2026-07-15T00:00:00.000Z",
+      "2026-08-09T00:00:00.000Z"
+    ]);
+  });
+
+  it("lists every built-in persona in a versioned response", async () => {
+    const response = await fixedFixtureService().listPersonas();
+
+    expect(response).toMatchObject({
+      schemaVersion: "persona-list.v2",
+      dataStatus: {
+        mode: "fixture",
+        sources: [
+          expect.objectContaining({
+            sourceId: "gateway-core",
+            recordCount: 6,
+            adapterVersion: "2.0.0-test"
+          })
+        ]
+      },
+      generatedAt: NOW
+    });
+    expect(response.personas.map((persona) => persona.id).sort()).toEqual([
+      "general",
+      "newlywed_family",
+      "senior",
+      "single_parent",
+      "university_student",
+      "youth_jobseeker"
+    ]);
+    expect(response.personas.every((persona) => persona.weights.query >= 0)).toBe(true);
+  });
+
+  it("reads paginated change history without creating additional events", async () => {
+    const store = new SnapshotStore(temporaryDatabasePath());
+    const ingestion = new BenefitIngestionService(store, { now: fixedNow });
+    ingestion.syncSource({
+      observation: {
+        sourceId: fixtureBenefits[0]!.sourceId,
+        status: "ok",
+        retrievedAt: NOW,
+        recordCount: fixtureBenefits.length,
+        adapterVersion: "fixture-ingestion-2"
+      },
+      sourceRevision: fixtureBenefits[0]!.sourceRevision,
+      complete: true,
+      records: fixtureBenefits
+    });
+    const initialEventCount = store.getChangeLogPage({ limit: 100 }).entries.length;
+    const service = fixedFixtureService(fixtureBenefits, store);
+
+    const firstPage = await service.getChangeLog({ limit: 2 });
+    const secondPage = await service.getChangeLog({
+      limit: 2,
+      cursor: firstPage.nextCursor
+    });
+
+    expect(firstPage).toMatchObject({
+      schemaVersion: "benefit-change-log.v2",
+      dataStatus: { mode: "fixture" },
+      entries: expect.any(Array),
+      nextCursor: expect.any(String),
+      generatedAt: NOW
+    });
+    expect(firstPage.entries).toHaveLength(2);
+    expect(secondPage.entries).toHaveLength(fixtureBenefits.length - 2);
+    expect(secondPage.nextCursor).toBeUndefined();
+    expect(
+      new Set([...firstPage.entries, ...secondPage.entries].map((entry) => entry.id)).size
+    ).toBe(fixtureBenefits.length);
+    expect(store.getChangeLogPage({ limit: 100 }).entries).toHaveLength(
+      initialEventCount
+    );
+    store.close();
+  });
+
+  it("maps a malformed opaque change-log cursor to a stable validation error", async () => {
+    const store = new SnapshotStore(temporaryDatabasePath());
+    const service = fixedFixtureService(fixtureBenefits, store);
+
+    await expect(
+      service.getChangeLog({ cursor: "syntactically-valid-but-malformed" })
+    ).rejects.toMatchObject({
+      name: "GatewayError",
+      code: "validation_error",
+      retryable: false
+    });
+    store.close();
+  });
+
+  it("performs no snapshot or change writes from any benefit read tool", async () => {
+    const path = temporaryDatabasePath();
+    const store = new SnapshotStore(path);
+    const service = fixedFixtureService(fixtureBenefits, store);
+
+    await service.searchBenefits({ query: "청년 주거" });
+    await service.getBenefitDetail({ id: fixtureBenefits[0]!.id });
+    await service.getUpcomingDeadlines({});
+    await service.buildChecklist({ benefitId: fixtureBenefits[0]!.id });
+    await service.getApplicationGuide({ benefitId: fixtureBenefits[0]!.id });
+
+    expect(v2WriteCounts(path)).toEqual({ snapshots: 0, changes: 0 });
+    store.close();
   });
 });
 
-function daysFromNow(days: number): string {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() + days);
-  date.setUTCHours(9, 0, 0, 0);
-  return date.toISOString();
+function fixedService(
+  repository: BenefitRepository,
+  changeLog?: SnapshotStore
+): BenefitToolService {
+  return new BenefitToolService(repository, changeLog, {
+    now: fixedNow,
+    gatewayVersion: "2.0.0-test"
+  });
 }
 
-function deadlineBenefit(
-  id: string,
-  applicationDeadline?: string,
-  overrides: Partial<BenefitRecord> = {}
-): BenefitRecord {
+function fixedFixtureService(
+  records: BenefitRecord[] = fixtureBenefits,
+  changeLog?: SnapshotStore
+): BenefitToolService {
+  return fixedService(
+    new FixtureBenefitRepository(records, { now: fixedNow }),
+    changeLog
+  );
+}
+
+function fixedNow(): Date {
+  return new Date(NOW);
+}
+
+function fixtureDataStatus(recordCount: number): DataStatus {
   return {
-    id,
-    title: `Benefit ${id}`,
-    provider: "Provider",
-    category: "other",
-    summary: `Summary for ${id}`,
-    target: "Target",
-    eligibility: [],
-    applicationPeriod: "공고별 상이",
-    applicationDeadline,
-    documents: [],
-    applicationMethods: ["온라인 신청"],
-    sourceUrl: `https://example.com/${id}`,
-    lastFetchedAt: "2026-05-20T00:00:00.000Z",
-    evidence: [],
-    searchableText: id,
-    regionTags: [],
-    ageRanges: [],
-    studentOnly: false,
-    employmentStatuses: [],
-    householdTypes: [],
-    ...overrides
+    mode: "fixture",
+    partial: false,
+    sources: [
+      {
+        sourceId: "fixture",
+        status: "ok",
+        retrievedAt: NOW,
+        recordCount,
+        adapterVersion: "2.0.0-fixture"
+      }
+    ]
   };
+}
+
+function deadlineRecord(id: string, applicationDeadline?: string): BenefitRecord {
+  const base = fixtureBenefits[0]!;
+  return {
+    ...base,
+    id,
+    sourceRecordId: id,
+    contentHash: "d".repeat(64),
+    title: `Deadline ${id}`,
+    summary: `Deadline fixture for ${id}.`,
+    ...(applicationDeadline ? { applicationDeadline } : { applicationDeadline: undefined }),
+    provenance: base.provenance.map((item) => ({ ...item, sourceRecordId: id })),
+    links: base.links.map((link) => ({
+      ...link,
+      url: `https://example.test/${id}/${link.rel}`
+    }))
+  };
+}
+
+function temporaryDatabasePath(): string {
+  return join(mkdtempSync(join(tmpdir(), "mcp-tool-service-")), "test.db");
+}
+
+function v2WriteCounts(path: string): { snapshots: number; changes: number } {
+  const database = new DatabaseSync(path) as DatabaseSyncInstance;
+  const snapshots = database
+    .prepare("select count(*) as count from source_snapshots_v2")
+    .get() as { count: number };
+  const changes = database
+    .prepare("select count(*) as count from change_log_v2")
+    .get() as { count: number };
+  database.close();
+  return { snapshots: snapshots.count, changes: changes.count };
 }

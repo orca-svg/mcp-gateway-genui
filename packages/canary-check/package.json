@@ -9,6 +9,10 @@
     "test": "vitest run",
     "start": "node dist/run.js"
   },
+  "dependencies": {
+    "@mcp-gen-ui/adapters": "workspace:*",
+    "@mcp-gen-ui/schema": "workspace:*"
+  },
   "devDependencies": {
     "vitest": "*"
   }

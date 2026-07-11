@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "mcp-error.v1",
+  "tool": "searchBenefits",
+  "error": {
+    "code": "all_sources_failed",
+    "message": "모든 구성된 데이터 출처를 현재 사용할 수 없습니다.",
+    "retryable": true
+  },
+  "dataStatus": {
+    "mode": "live",
+    "partial": true,
+    "sources": [
+      {
+        "sourceId": "source-a",
+        "status": "timeout",
+        "retrievedAt": "2026-07-09T23:59:00.000Z",
+        "recordCount": 0,
+        "errorCode": "UPSTREAM_TIMEOUT",
+        "adapterVersion": "1.4.0"
+      },
+      {
+        "sourceId": "source-b",
+        "status": "unavailable",
+        "retrievedAt": "2026-07-09T23:59:00.000Z",
+        "recordCount": 0,
+        "errorCode": "UPSTREAM_UNAVAILABLE",
+        "adapterVersion": "2.1.0"
+      }
+    ]
+  },
+  "generatedAt": "2026-07-10T00:00:00.000Z"
+}

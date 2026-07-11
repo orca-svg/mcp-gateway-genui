@@ -35,3 +35,8 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Verify generated schemas are current
+        run: |
+          pnpm schemas
+          git diff --exit-code -- packages/schema/schema

@@ -1,0 +1,703 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "upcoming-deadlines.v2"
+    },
+    "profile": {
+      "type": "object",
+      "properties": {
+        "regionCode": {
+          "type": "string",
+          "enum": [
+            "KR-11",
+            "KR-26",
+            "KR-27",
+            "KR-28",
+            "KR-29",
+            "KR-30",
+            "KR-31",
+            "KR-36",
+            "KR-41",
+            "KR-42",
+            "KR-43",
+            "KR-44",
+            "KR-45",
+            "KR-46",
+            "KR-47",
+            "KR-48",
+            "KR-49"
+          ]
+        },
+        "ageBand": {
+          "type": "string",
+          "enum": [
+            "teen",
+            "twenties",
+            "thirties",
+            "forties",
+            "fifties",
+            "sixties_plus"
+          ]
+        },
+        "studentStatus": {
+          "default": "unknown",
+          "type": "string",
+          "enum": [
+            "student",
+            "not_student",
+            "unknown"
+          ]
+        },
+        "employmentStatus": {
+          "default": "unknown",
+          "type": "string",
+          "enum": [
+            "employed",
+            "self_employed",
+            "unemployed",
+            "unknown"
+          ]
+        },
+        "householdType": {
+          "default": "unknown",
+          "type": "string",
+          "enum": [
+            "single",
+            "couple",
+            "family",
+            "single_parent",
+            "unknown"
+          ]
+        },
+        "interests": {
+          "default": [],
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "persona": {
+          "$ref": "#/$defs/__schema1"
+        }
+      },
+      "additionalProperties": false
+    },
+    "withinDays": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365
+    },
+    "rankingPolicy": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "version": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "persona": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "effectiveWeights": {
+          "type": "object",
+          "properties": {
+            "region": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "age": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "student": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "employment": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "household": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "category": {
+              "$ref": "#/$defs/__schema4"
+            },
+            "query": {
+              "$ref": "#/$defs/__schema4"
+            }
+          },
+          "required": [
+            "region",
+            "age",
+            "student",
+            "employment",
+            "household",
+            "category",
+            "query"
+          ],
+          "additionalProperties": false,
+          "description": "If all effective weights are zero, every ranking score is 0 and candidates use deterministic opaque-ID ordering; assessment is unchanged."
+        },
+        "scoreMeaning": {
+          "type": "string",
+          "const": "relative_relevance_not_eligibility"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "effectiveWeights",
+        "scoreMeaning"
+      ],
+      "additionalProperties": false
+    },
+    "dataStatus": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "fixture",
+            "live",
+            "mixed"
+          ]
+        },
+        "partial": {
+          "type": "boolean"
+        },
+        "sources": {
+          "minItems": 1,
+          "maxItems": 64,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema5"
+          }
+        }
+      },
+      "required": [
+        "mode",
+        "partial",
+        "sources"
+      ],
+      "additionalProperties": false
+    },
+    "results": {
+      "maxItems": 1000,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema8"
+      }
+    },
+    "generatedAt": {
+      "$ref": "#/$defs/__schema7"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "profile",
+    "rankingPolicy",
+    "dataStatus",
+    "results",
+    "generatedAt"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "enum": [
+        "housing",
+        "education",
+        "employment",
+        "health",
+        "family",
+        "youth",
+        "local",
+        "other"
+      ]
+    },
+    "__schema1": {
+      "type": "string",
+      "enum": [
+        "youth_jobseeker",
+        "university_student",
+        "newlywed_family",
+        "single_parent",
+        "senior",
+        "general"
+      ]
+    },
+    "__schema2": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "__schema3": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"
+    },
+    "__schema4": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "__schema5": {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "partial",
+            "timeout",
+            "unavailable",
+            "invalid_payload"
+          ]
+        },
+        "retrievedAt": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "errorCode": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "adapterVersion": {
+          "$ref": "#/$defs/__schema3"
+        }
+      },
+      "required": [
+        "sourceId",
+        "status",
+        "retrievedAt",
+        "recordCount",
+        "adapterVersion"
+      ],
+      "additionalProperties": false
+    },
+    "__schema6": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "__schema7": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "__schema8": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "title": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "provider": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "category": {
+          "$ref": "#/$defs/__schema0"
+        },
+        "summary": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "assessment": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "candidate",
+                "needs_more_info",
+                "conflict_detected"
+              ]
+            },
+            "constraints": {
+              "maxItems": 32,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema9"
+              }
+            },
+            "missingInfo": {
+              "maxItems": 32,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema13"
+              }
+            }
+          },
+          "required": [
+            "status",
+            "constraints",
+            "missingInfo"
+          ],
+          "additionalProperties": false
+        },
+        "ranking": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "breakdown": {
+              "maxItems": 32,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema14"
+              }
+            }
+          },
+          "required": [
+            "score",
+            "breakdown"
+          ],
+          "additionalProperties": false
+        },
+        "provenance": {
+          "minItems": 1,
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema15"
+          }
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema16"
+          }
+        },
+        "freshness": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "fresh",
+                "stale",
+                "unknown"
+              ]
+            },
+            "observedAt": {
+              "$ref": "#/$defs/__schema7"
+            },
+            "staleAfter": {
+              "$ref": "#/$defs/__schema7"
+            }
+          },
+          "required": [
+            "status",
+            "observedAt"
+          ],
+          "additionalProperties": false
+        },
+        "applicationDeadline": {
+          "$ref": "#/$defs/__schema7"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "provider",
+        "category",
+        "summary",
+        "assessment",
+        "ranking",
+        "provenance",
+        "links",
+        "freshness",
+        "applicationDeadline"
+      ],
+      "additionalProperties": false
+    },
+    "__schema9": {
+      "type": "object",
+      "properties": {
+        "dimension": {
+          "$ref": "#/$defs/__schema10"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "match",
+            "conflict",
+            "unknown"
+          ]
+        },
+        "basis": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "ruleId": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "ruleVersion": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "sourceFields": {
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema12"
+          }
+        },
+        "explanation": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "dimension",
+        "outcome",
+        "basis",
+        "ruleId",
+        "ruleVersion",
+        "sourceFields",
+        "explanation"
+      ],
+      "additionalProperties": false
+    },
+    "__schema10": {
+      "type": "string",
+      "enum": [
+        "region",
+        "age",
+        "student",
+        "employment",
+        "household",
+        "category",
+        "query"
+      ]
+    },
+    "__schema11": {
+      "type": "string",
+      "enum": [
+        "authoritative_structured",
+        "derived_text",
+        "default"
+      ]
+    },
+    "__schema12": {
+      "type": "string",
+      "format": "normalized-display-text",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "__schema13": {
+      "type": "string",
+      "format": "normalized-display-text",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "__schema14": {
+      "type": "object",
+      "properties": {
+        "dimension": {
+          "$ref": "#/$defs/__schema10"
+        },
+        "signal": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "weight": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "contribution": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "explanation": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "dimension",
+        "signal",
+        "weight",
+        "contribution",
+        "explanation"
+      ],
+      "additionalProperties": false
+    },
+    "__schema15": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^(?:\\/(?:[^~/]|~0|~1)*)*$"
+        },
+        "sourceId": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "sourceRecordId": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "authority": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "observedAt": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "sourceRevision": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "license": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "attribution": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      },
+      "required": [
+        "field",
+        "sourceId",
+        "sourceRecordId",
+        "authority",
+        "contentHash",
+        "observedAt"
+      ],
+      "additionalProperties": false
+    },
+    "__schema16": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "rel": {
+              "$ref": "#/$defs/__schema17"
+            },
+            "health": {
+              "$ref": "#/$defs/__schema18"
+            },
+            "verifiedAt": {
+              "$ref": "#/$defs/__schema19"
+            },
+            "verificationMethod": {
+              "$ref": "#/$defs/__schema20"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 2048,
+              "format": "safe-https-url"
+            },
+            "official": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": [
+            "rel",
+            "health",
+            "url",
+            "official"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rel": {
+              "$ref": "#/$defs/__schema17"
+            },
+            "health": {
+              "$ref": "#/$defs/__schema18"
+            },
+            "verifiedAt": {
+              "$ref": "#/$defs/__schema19"
+            },
+            "verificationMethod": {
+              "$ref": "#/$defs/__schema20"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 2048,
+              "format": "safe-public-url"
+            },
+            "official": {
+              "type": "boolean",
+              "const": false
+            }
+          },
+          "required": [
+            "rel",
+            "health",
+            "url",
+            "official"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema17": {
+      "type": "string",
+      "enum": [
+        "source",
+        "apply"
+      ]
+    },
+    "__schema18": {
+      "type": "string",
+      "enum": [
+        "verified",
+        "stale",
+        "unchecked",
+        "unreachable"
+      ]
+    },
+    "__schema19": {
+      "$ref": "#/$defs/__schema7"
+    },
+    "__schema20": {
+      "type": "string",
+      "format": "normalized-display-text",
+      "minLength": 1,
+      "maxLength": 300
+    }
+  },
+  "$id": "urn:mcp-gen-ui:schema:v2:UpcomingDeadlinesResponse"
+}

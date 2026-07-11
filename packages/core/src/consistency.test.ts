@@ -10,22 +10,25 @@ describe("runConsistencyRules", () => {
     expect(runConsistencyRules(fixtureBenefits)).toEqual([]);
   });
 
-  it("flags a missing source URL as an error", () => {
-    const invalid: BenefitRecord = { ...base, sourceUrl: "" };
+  it("flags a missing source link as an error", () => {
+    const invalid: BenefitRecord = {
+      ...base,
+      links: base.links.filter((link) => link.rel !== "source")
+    };
     const issues = runConsistencyRules([invalid]);
-    expect(issues.some((i) => i.ruleId === "required-source-url" && i.severity === "error")).toBe(
+    expect(issues.some((i) => i.ruleId === "required-source-link" && i.severity === "error")).toBe(
       true
     );
   });
 
-  it("warns when an online method lacks an application URL", () => {
+  it("warns when an online method lacks a separate apply link", () => {
     const partial: BenefitRecord = {
       ...base,
-      applicationMethods: ["온라인 신청"],
-      applicationUrl: undefined
+      applicationMethods: ["Online application"],
+      links: base.links.filter((link) => link.rel !== "apply")
     };
     const issues = runConsistencyRules([partial]);
-    expect(issues.some((i) => i.ruleId === "application-url-when-online")).toBe(true);
+    expect(issues.some((i) => i.ruleId === "application-link-when-online")).toBe(true);
   });
 
   it("warns on duplicate documents", () => {

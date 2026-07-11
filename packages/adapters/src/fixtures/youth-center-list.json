@@ -1,0 +1,33 @@
+{
+  "resultCode": 200,
+  "resultMessage": "성공적으로 데이터를 가지고 왔습니다.",
+  "result": {
+    "pagging": {
+      "totCount": 1,
+      "pageNum": 1,
+      "pageSize": 100
+    },
+    "youthPolicyList": [
+      {
+        "plcyNo": "R202607100001",
+        "plcyNm": "서울 청년 취업 지원금",
+        "sprvsnInstCdNm": "서울특별시",
+        "plcyExplnCn": "서울 미취업 청년에게 취업 준비금을 지원합니다.",
+        "plcySprtCn": "월 50만원 지원",
+        "sprtTrgtMinAge": "19",
+        "sprtTrgtMaxAge": "34",
+        "zipCd": "11000",
+        "earnEtcCn": "1인 가구 및 구직 청년 우대",
+        "addAplyQlfcCndCn": "서울 거주 미취업 청년",
+        "ptcpPrpTrgtCn": "재직자는 참여 제한",
+        "plcyKywdNm": "취업,일자리,청년",
+        "aplyYmd": "20260701~20261231",
+        "aplyUrlAddr": "https://www.youthcenter.go.kr/apply/R202607100001",
+        "refUrlAddr1": "https://www.youthcenter.go.kr/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/R202607100001",
+        "sbmsnDcmntCn": "신청서, 구직활동계획서",
+        "plcyAplyMthdCn": "온라인 신청",
+        "lastMdfcnDt": "2026-07-09 12:00:00"
+      }
+    ]
+  }
+}
