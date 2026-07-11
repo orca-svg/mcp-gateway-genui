@@ -1,5 +1,16 @@
 # @mcp-gen-ui/core
 
+## 0.3.0
+
+### Minor Changes
+
+- 5d2fecf: Introduce the strict source-aware v2 benefit discovery contract: draft 2020-12 schemas and representative fixtures, separated assessment and relative relevance ranking, field provenance and verified links, fail-closed runtime modes, adapter implementations for the documented 온통청년 and Bokjiro contracts plus the compatibility-named `subsidy24` adapter for 기획예산처 national-subsidy open calls, explicit atomic ingestion/change history, and fully declared MCP tools. YouthCenter live activation still requires verification with an issued production key.
+
+### Patch Changes
+
+- Updated dependencies [5d2fecf]
+  - @mcp-gen-ui/schema@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

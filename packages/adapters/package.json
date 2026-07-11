@@ -1,6 +1,6 @@
 {
   "name": "@mcp-gen-ui/adapters",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Live and composable BenefitRepository adapters for mcp-gen-ui.",
   "license": "Apache-2.0",
   "author": "Team KOI",
