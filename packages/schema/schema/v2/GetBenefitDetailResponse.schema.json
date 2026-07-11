@@ -1,0 +1,616 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "benefit-detail.v2"
+    },
+    "dataStatus": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "fixture",
+            "live",
+            "mixed"
+          ]
+        },
+        "partial": {
+          "type": "boolean"
+        },
+        "sources": {
+          "minItems": 1,
+          "maxItems": 64,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        }
+      },
+      "required": [
+        "mode",
+        "partial",
+        "sources"
+      ],
+      "additionalProperties": false
+    },
+    "result": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "title": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "provider": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "housing",
+            "education",
+            "employment",
+            "health",
+            "family",
+            "youth",
+            "local",
+            "other"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "assessment": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "candidate",
+                "needs_more_info",
+                "conflict_detected"
+              ]
+            },
+            "constraints": {
+              "maxItems": 32,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema5"
+              }
+            },
+            "missingInfo": {
+              "maxItems": 32,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema9"
+              }
+            }
+          },
+          "required": [
+            "status",
+            "constraints",
+            "missingInfo"
+          ],
+          "additionalProperties": false
+        },
+        "ranking": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "breakdown": {
+              "maxItems": 32,
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema10"
+              }
+            }
+          },
+          "required": [
+            "score",
+            "breakdown"
+          ],
+          "additionalProperties": false
+        },
+        "provenance": {
+          "minItems": 1,
+          "maxItems": 256,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema11"
+          }
+        },
+        "links": {
+          "minItems": 1,
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema12"
+          }
+        },
+        "freshness": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "fresh",
+                "stale",
+                "unknown"
+              ]
+            },
+            "observedAt": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "staleAfter": {
+              "$ref": "#/$defs/__schema2"
+            }
+          },
+          "required": [
+            "status",
+            "observedAt"
+          ],
+          "additionalProperties": false
+        },
+        "target": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "eligibility": {
+          "maxItems": 64,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema17"
+          }
+        },
+        "applicationPeriod": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "applicationDeadline": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "fee": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "processingTime": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "documents": {
+          "maxItems": 128,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema18"
+          }
+        },
+        "applicationMethods": {
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema19"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "provider",
+        "category",
+        "summary",
+        "assessment",
+        "ranking",
+        "provenance",
+        "links",
+        "freshness",
+        "target",
+        "eligibility",
+        "documents",
+        "applicationMethods"
+      ],
+      "additionalProperties": false
+    },
+    "generatedAt": {
+      "$ref": "#/$defs/__schema2"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "dataStatus",
+    "result",
+    "generatedAt"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "partial",
+            "timeout",
+            "unavailable",
+            "invalid_payload"
+          ]
+        },
+        "retrievedAt": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "errorCode": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "adapterVersion": {
+          "$ref": "#/$defs/__schema4"
+        }
+      },
+      "required": [
+        "sourceId",
+        "status",
+        "retrievedAt",
+        "recordCount",
+        "adapterVersion"
+      ],
+      "additionalProperties": false
+    },
+    "__schema1": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+    },
+    "__schema2": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "__schema3": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "__schema4": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"
+    },
+    "__schema5": {
+      "type": "object",
+      "properties": {
+        "dimension": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "match",
+            "conflict",
+            "unknown"
+          ]
+        },
+        "basis": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "ruleId": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "ruleVersion": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "sourceFields": {
+          "maxItems": 32,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema8"
+          }
+        },
+        "explanation": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "dimension",
+        "outcome",
+        "basis",
+        "ruleId",
+        "ruleVersion",
+        "sourceFields",
+        "explanation"
+      ],
+      "additionalProperties": false
+    },
+    "__schema6": {
+      "type": "string",
+      "enum": [
+        "region",
+        "age",
+        "student",
+        "employment",
+        "household",
+        "category",
+        "query"
+      ]
+    },
+    "__schema7": {
+      "type": "string",
+      "enum": [
+        "authoritative_structured",
+        "derived_text",
+        "default"
+      ]
+    },
+    "__schema8": {
+      "type": "string",
+      "format": "normalized-display-text",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "__schema9": {
+      "type": "string",
+      "format": "normalized-display-text",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "__schema10": {
+      "type": "object",
+      "properties": {
+        "dimension": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "signal": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "contribution": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "explanation": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      },
+      "required": [
+        "dimension",
+        "signal",
+        "weight",
+        "contribution",
+        "explanation"
+      ],
+      "additionalProperties": false
+    },
+    "__schema11": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^(?:\\/(?:[^~/]|~0|~1)*)*$"
+        },
+        "sourceId": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "sourceRecordId": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "authority": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "contentHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "observedAt": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "sourceRevision": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "license": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "attribution": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      },
+      "required": [
+        "field",
+        "sourceId",
+        "sourceRecordId",
+        "authority",
+        "contentHash",
+        "observedAt"
+      ],
+      "additionalProperties": false
+    },
+    "__schema12": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "rel": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "health": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "verifiedAt": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "verificationMethod": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 2048,
+              "format": "safe-https-url"
+            },
+            "official": {
+              "type": "boolean",
+              "const": true
+            }
+          },
+          "required": [
+            "rel",
+            "health",
+            "url",
+            "official"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "rel": {
+              "$ref": "#/$defs/__schema13"
+            },
+            "health": {
+              "$ref": "#/$defs/__schema14"
+            },
+            "verifiedAt": {
+              "$ref": "#/$defs/__schema15"
+            },
+            "verificationMethod": {
+              "$ref": "#/$defs/__schema16"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 2048,
+              "format": "safe-public-url"
+            },
+            "official": {
+              "type": "boolean",
+              "const": false
+            }
+          },
+          "required": [
+            "rel",
+            "health",
+            "url",
+            "official"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema13": {
+      "type": "string",
+      "enum": [
+        "source",
+        "apply"
+      ]
+    },
+    "__schema14": {
+      "type": "string",
+      "enum": [
+        "verified",
+        "stale",
+        "unchecked",
+        "unreachable"
+      ]
+    },
+    "__schema15": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "__schema16": {
+      "type": "string",
+      "format": "normalized-display-text",
+      "minLength": 1,
+      "maxLength": 300
+    },
+    "__schema17": {
+      "type": "string",
+      "format": "normalized-display-text",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "__schema18": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "label": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "source": {
+          "$ref": "#/$defs/__schema1"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "required"
+      ],
+      "additionalProperties": false
+    },
+    "__schema19": {
+      "type": "string",
+      "format": "normalized-display-text",
+      "minLength": 1,
+      "maxLength": 300
+    }
+  },
+  "$id": "urn:mcp-gen-ui:schema:v2:GetBenefitDetailResponse"
+}

@@ -19,30 +19,31 @@ export interface ConsistencyRule {
 
 export const defaultConsistencyRules: ConsistencyRule[] = [
   {
-    id: "required-source-url",
+    id: "required-source-link",
     check: (benefit) =>
-      benefit.sourceUrl.length > 0
+      benefit.links.some((link) => link.rel === "source")
         ? []
         : [
             {
-              ruleId: "required-source-url",
+              ruleId: "required-source-link",
               severity: "error",
               benefitId: benefit.id,
-              message: "sourceUrl is required."
+              message: "A source link is required."
             }
           ]
   },
   {
-    id: "application-url-when-online",
+    id: "application-link-when-online",
     check: (benefit) =>
-      benefit.applicationMethods.some((method) => method.includes("온라인")) &&
-      !benefit.applicationUrl
+      benefit.applicationMethods.some((method) =>
+        /online|온라인/iu.test(method)
+      ) && !benefit.links.some((link) => link.rel === "apply")
         ? [
             {
-              ruleId: "application-url-when-online",
+              ruleId: "application-link-when-online",
               severity: "warning",
               benefitId: benefit.id,
-              message: "Online application method should include an applicationUrl."
+              message: "An online application method should include a separate apply link."
             }
           ]
         : []

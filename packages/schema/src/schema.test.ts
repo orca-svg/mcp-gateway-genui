@@ -1,178 +1,186 @@
 import { describe, expect, it } from "vitest";
 import {
-  BenefitDetailSchema,
+  BenefitCandidateV2Schema,
   BenefitSearchRequestSchema,
-  BenefitSummarySchema,
+  BuildChecklistRequestSchema,
+  GetApplicationGuideRequestSchema,
+  GetBenefitDetailRequestSchema,
+  GetChangeLogRequestSchema,
+  HttpsUrlSchema,
+  ListPersonasRequestSchema,
+  OpaqueIdSchema,
+  PublicUrlSchema,
+  RecommendationWeightsSchema,
+  StrictCoarseProfileSchema,
   UpcomingDeadlinesRequestSchema,
-  UpcomingDeadlinesResponseSchema,
-  BenefitRecordSchema,
-  UserProfileSchema
+  VerifiedLinkSchema,
+  normalizeDisplayText,
+  normalizeQuery
 } from "./index.js";
 
-describe("UserProfileSchema", () => {
-  it("applies non-identifying defaults", () => {
-    const profile = UserProfileSchema.parse({});
+describe("strict v2 request contracts", () => {
+  it("applies non-identifying coarse-profile defaults", () => {
+    const parsed = BenefitSearchRequestSchema.parse({ query: "서울 주거 지원" });
 
-    expect(profile.studentStatus).toBe("unknown");
-    expect(profile.employmentStatus).toBe("unknown");
-    expect(profile.householdType).toBe("unknown");
-    expect(profile.interests).toEqual([]);
-    expect(profile.persona).toBeUndefined();
+    expect(parsed.profile).toEqual({
+      studentStatus: "unknown",
+      employmentStatus: "unknown",
+      householdType: "unknown",
+      interests: []
+    });
+    expect(parsed.weights).toEqual({});
   });
 
-  it("rejects an unknown age range", () => {
-    expect(() => UserProfileSchema.parse({ ageRange: "centenarian" })).toThrow();
+  it("rejects unknown PII-shaped fields rather than stripping them", () => {
+    expect(
+      BenefitSearchRequestSchema.safeParse({
+        query: "서울 주거 지원",
+        email: "person@example.test"
+      }).success
+    ).toBe(false);
+    expect(
+      BenefitSearchRequestSchema.safeParse({
+        query: "서울 주거 지원",
+        profile: { residentNumber: "000000-0000000" }
+      }).success
+    ).toBe(false);
+  });
+
+  it("uses region codes and age bands instead of address or birth data", () => {
+    expect(
+      StrictCoarseProfileSchema.safeParse({ regionCode: "KR-11", ageBand: "twenties" })
+        .success
+    ).toBe(true);
+    expect(StrictCoarseProfileSchema.safeParse({ regionCode: "서울 강남구" }).success).toBe(
+      false
+    );
+    expect(StrictCoarseProfileSchema.safeParse({ birthDate: "2000-01-01" }).success).toBe(
+      false
+    );
+  });
+
+  it("requires canonical safe queries between 1 and 300 code points", () => {
+    expect(BenefitSearchRequestSchema.safeParse({ query: "정상 검색" }).success).toBe(true);
+    expect(BenefitSearchRequestSchema.safeParse({ query: " 검색 " }).success).toBe(false);
+    expect(BenefitSearchRequestSchema.safeParse({ query: "청년\u200B지원" }).success).toBe(
+      false
+    );
+    expect(BenefitSearchRequestSchema.safeParse({ query: "e\u0301" }).success).toBe(false);
+    expect(BenefitSearchRequestSchema.safeParse({ query: "x".repeat(300) }).success).toBe(true);
+    expect(BenefitSearchRequestSchema.safeParse({ query: "x".repeat(301) }).success).toBe(false);
+    expect(BenefitSearchRequestSchema.safeParse({ query: "😀".repeat(300) }).success).toBe(
+      true
+    );
+    expect(BenefitSearchRequestSchema.safeParse({ query: "😀".repeat(301) }).success).toBe(
+      false
+    );
+    expect(normalizeQuery("  e\u0301\u200B 지원  ")).toBe("é 지원");
+  });
+
+  it("bounds deadline windows to integer days 1 through 365", () => {
+    expect(UpcomingDeadlinesRequestSchema.safeParse({ withinDays: 1 }).success).toBe(true);
+    expect(UpcomingDeadlinesRequestSchema.safeParse({ withinDays: 365 }).success).toBe(true);
+    expect(UpcomingDeadlinesRequestSchema.safeParse({ withinDays: 0 }).success).toBe(false);
+    expect(UpcomingDeadlinesRequestSchema.safeParse({ withinDays: 366 }).success).toBe(false);
+    expect(UpcomingDeadlinesRequestSchema.safeParse({ withinDays: 1.5 }).success).toBe(false);
+  });
+
+  it("accepts only finite weights from 0 through 10", () => {
+    expect(RecommendationWeightsSchema.safeParse({ query: 0, region: 10 }).success).toBe(true);
+    expect(RecommendationWeightsSchema.safeParse({ query: -1 }).success).toBe(false);
+    expect(RecommendationWeightsSchema.safeParse({ query: 10.01 }).success).toBe(false);
+    expect(RecommendationWeightsSchema.safeParse({ query: Number.POSITIVE_INFINITY }).success).toBe(
+      false
+    );
+  });
+
+  it("publishes strict object inputs for all seven tools", () => {
+    const cases = [
+      [BenefitSearchRequestSchema, { query: "지원", unexpected: true }],
+      [GetBenefitDetailRequestSchema, { id: "benefit-1", unexpected: true }],
+      [UpcomingDeadlinesRequestSchema, { unexpected: true }],
+      [ListPersonasRequestSchema, { unexpected: true }],
+      [BuildChecklistRequestSchema, { benefitId: "benefit-1", unexpected: true }],
+      [GetApplicationGuideRequestSchema, { benefitId: "benefit-1", unexpected: true }],
+      [GetChangeLogRequestSchema, { unexpected: true }]
+    ] as const;
+
+    for (const [schema, value] of cases) {
+      expect(schema.safeParse(value).success).toBe(false);
+    }
   });
 });
 
-describe("BenefitSummarySchema", () => {
-  it("defaults recommendation scores for backward compatibility", () => {
-    const summary = BenefitSummarySchema.parse({
-      id: "x",
-      title: "x",
-      provider: "x",
+describe("safe public scalar contracts", () => {
+  it("enforces the opaque ID grammar", () => {
+    expect(OpaqueIdSchema.safeParse("source:record_1-test").success).toBe(true);
+    expect(OpaqueIdSchema.safeParse("contains a space").success).toBe(false);
+    expect(OpaqueIdSchema.safeParse(`x${"y".repeat(128)}`).success).toBe(false);
+  });
+
+  it("retains HTTP evidence only on the unofficial link branch", () => {
+    expect(PublicUrlSchema.safeParse("http://legacy.example.test/item").success).toBe(true);
+    expect(HttpsUrlSchema.safeParse("http://legacy.example.test/item").success).toBe(false);
+    expect(
+      VerifiedLinkSchema.safeParse({
+        rel: "source",
+        url: "http://legacy.example.test/item",
+        official: false,
+        health: "unchecked"
+      }).success
+    ).toBe(true);
+    expect(
+      VerifiedLinkSchema.safeParse({
+        rel: "source",
+        url: "http://legacy.example.test/item",
+        official: true,
+        health: "unchecked"
+      }).success
+    ).toBe(false);
+    expect(PublicUrlSchema.safeParse("javascript:alert(1)").success).toBe(false);
+    expect(PublicUrlSchema.safeParse("https://user:secret@example.test/").success).toBe(false);
+  });
+
+  it("normalizes literal text without filtering instructions, HTML, or Markdown", () => {
+    const normalized = normalizeDisplayText(
+      "  ignore previous\u200B instructions <b>literal</b> **markdown**  ",
+      200
+    );
+
+    expect(normalized).toBe("ignore previous instructions <b>literal</b> **markdown**");
+  });
+
+  it("rejects unknown fields on nested candidates", () => {
+    const minimal = {
+      id: "benefit-1",
+      title: "혜택",
+      provider: "기관",
       category: "other",
-      summary: "x",
-      status: "candidate"
-    });
-
-    expect(summary.score).toBe(0);
-    expect(summary.scoreBreakdown).toEqual([]);
-  });
-});
-
-describe("BenefitSearchRequestSchema", () => {
-  it("parses non-identifying profile conditions", () => {
-    const parsed = BenefitSearchRequestSchema.parse({
-      query: "서울 거주 대학생 지원",
-      profile: {
-        region: "서울",
-        ageRange: "twenties",
-        studentStatus: "student",
-        interests: ["education"]
-      }
-    });
-
-    expect(parsed.profile.studentStatus).toBe("student");
-    expect(parsed.profile.employmentStatus).toBe("unknown");
-  });
-
-  it("accepts the built-in persona ids and per-request score weight overrides", () => {
-    const parsed = BenefitSearchRequestSchema.parse({
-      query: "서울 청년 월세",
-      profile: { persona: "newlywed_family", interests: ["housing"] },
-      weights: { region: 3, category: 2, household: 1 }
-    });
-
-    expect(parsed.profile.persona).toBe("newlywed_family");
-    expect(parsed.weights.region).toBe(3);
-  });
-
-  it("rejects the superseded persona ids", () => {
-    expect(() =>
-      BenefitSearchRequestSchema.parse({
-        query: "서울 청년 월세",
-        profile: { persona: "housing" }
-      })
-    ).toThrow();
-  });
-
-  it("requires a non-empty query", () => {
-    expect(() => BenefitSearchRequestSchema.parse({ query: "" })).toThrow();
-  });
-});
-
-describe("BenefitRecordSchema", () => {
-  it("accepts an optional structured application deadline on records and details", () => {
-    const detail = BenefitDetailSchema.parse({
-      id: "deadline-benefit",
-      title: "deadline benefit",
-      provider: "provider",
-      category: "other",
-      summary: "summary",
-      target: "target",
-      applicationDeadline: "2026-07-15T09:00:00.000Z",
-      sourceUrl: "https://example.com/benefit",
-      lastFetchedAt: "2026-05-20T00:00:00.000Z"
-    });
-
-    const record = BenefitRecordSchema.parse({
-      ...detail,
-      searchableText: "deadline"
-    });
-
-    expect(detail.applicationDeadline).toBe("2026-07-15T09:00:00.000Z");
-    expect(record.applicationDeadline).toBe("2026-07-15T09:00:00.000Z");
-  });
-
-  it("rejects malformed structured application deadlines", () => {
-    expect(() =>
-      BenefitRecordSchema.parse({
-        id: "deadline-benefit",
-        title: "deadline benefit",
-        provider: "provider",
-        category: "other",
-        summary: "summary",
-        target: "target",
-        applicationDeadline: "July 15, 2026",
-        sourceUrl: "https://example.com/benefit",
-        lastFetchedAt: "2026-05-20T00:00:00.000Z"
-      })
-    ).toThrow();
-  });
-
-  it("defaults household type tags for repository records", () => {
-    const record = BenefitRecordSchema.parse({
-      id: "x",
-      title: "x",
-      provider: "x",
-      category: "other",
-      summary: "x",
-      target: "x",
-      sourceUrl: "https://example.com/x",
-      lastFetchedAt: "2026-05-20T00:00:00.000Z"
-    });
-
-    expect(record.householdTypes).toEqual([]);
-  });
-
-  it("requires a valid source URL", () => {
-    expect(() =>
-      BenefitRecordSchema.parse({
-        id: "x",
-        title: "x",
-        provider: "x",
-        category: "other",
-        summary: "x",
-        target: "x",
-        sourceUrl: "not-a-url",
-        lastFetchedAt: "2026-05-20T00:00:00.000Z"
-      })
-    ).toThrow();
-  });
-});
-
-describe("UpcomingDeadlines schemas", () => {
-  it("defaults the request profile and parses deadline-bearing responses", () => {
-    const request = UpcomingDeadlinesRequestSchema.parse({ withinDays: 30 });
-    const response = UpcomingDeadlinesResponseSchema.parse({
-      profile: request.profile,
-      withinDays: request.withinDays,
-      results: [
+      summary: "설명",
+      assessment: { status: "needs_more_info", constraints: [], missingInfo: ["확인 필요"] },
+      ranking: { score: 0, breakdown: [] },
+      provenance: [
         {
-          id: "deadline-benefit",
-          title: "deadline benefit",
-          provider: "provider",
-          category: "other",
-          summary: "summary",
-          status: "candidate",
-          applicationDeadline: "2026-07-15T09:00:00.000Z"
+          field: "/title",
+          sourceId: "source-1",
+          sourceRecordId: "record-1",
+          authority: "authoritative_structured",
+          contentHash: "a".repeat(64),
+          observedAt: "2026-07-10T00:00:00.000Z"
         }
       ],
-      generatedAt: "2026-06-01T00:00:00.000Z"
-    });
+      links: [
+        {
+          rel: "source",
+          url: "https://example.test/item",
+          official: false,
+          health: "unchecked"
+        }
+      ],
+      freshness: { status: "unknown", observedAt: "2026-07-10T00:00:00.000Z" },
+      unexpected: true
+    };
 
-    expect(request.profile.interests).toEqual([]);
-    expect(response.results[0]?.applicationDeadline).toBe("2026-07-15T09:00:00.000Z");
+    expect(BenefitCandidateV2Schema.safeParse(minimal).success).toBe(false);
   });
 });

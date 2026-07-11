@@ -1,189 +1,137 @@
 # Extending the gateway
 
-The gateway is designed so product teams can keep the MCP transport and stable
-JSON contracts while swapping the data source, validation rules, or ranking
-policy. Extensions must preserve the public-benefit safety boundary: do not store
-sensitive identifiers, do not automate login/identity verification/submission,
-and frame recommendations as candidates rather than definitive eligibility
-judgements.
+Extensions must preserve the public-benefit boundary: no sensitive identifiers,
+no login/identity/submission automation, and no definitive eligibility claims.
 
-## Bring your own data source
+## Bring your own read repository
 
-`BenefitToolService` depends on the small asynchronous `BenefitRepository`
-interface from `@mcp-gen-ui/core`:
+`BenefitToolService` depends on a source-aware, read-only interface:
 
 ```ts
 interface BenefitRepository {
-  search(): Promise<BenefitRecord[]>;
-  getById(id: string): Promise<BenefitRecord | undefined>;
+  readonly mode: "fixture" | "live" | "mixed";
+  search(): Promise<BenefitRepositoryResult>; // { records, dataStatus }
+  getById(id: string): Promise<BenefitRepositoryDetailResult>; // { record?, dataStatus }
 }
 ```
 
-Implement those two methods for your source of truth, then pass the repository to
-`BenefitToolService`:
+Validate both records and envelopes at the boundary:
 
 ```ts
-import { BenefitToolService, SnapshotStore } from "@mcp-gen-ui/core";
+import {
+  BenefitRepositoryDetailResultSchema,
+  BenefitRepositoryResultSchema,
+} from "@mcp-gen-ui/schema";
+```
+
+Every `BenefitRecord` needs a stable opaque ID, source ID/record ID/revision,
+canonical content hash, field-level provenance, at least one structured source
+link, freshness inputs, and separately typed constraint rules. See
+[`examples/custom-benefit-repository.ts`](../examples/custom-benefit-repository.ts).
+
+```ts
+import { BenefitToolService } from "@mcp-gen-ui/core";
 import { JsonFileBenefitRepository } from "../examples/custom-benefit-repository.js";
 
-const repository = new JsonFileBenefitRepository("./my-benefits.json");
-const snapshots = new SnapshotStore("./benefit-snapshots.db");
-const service = new BenefitToolService(repository, snapshots);
-
-const search = await service.searchBenefits({
+const service = new BenefitToolService(
+  new JsonFileBenefitRepository("./my-benefits-v2.json"),
+);
+const response = await service.searchBenefits({
   query: "부산 돌봄 교육",
   profile: {
-    region: "부산",
+    regionCode: "KR-26",
     employmentStatus: "unemployed",
-    interests: ["employment"]
-  }
+    interests: ["family", "education"],
+  },
 });
 ```
 
-The repository can read from a JSON file, remote API, database, cache, or an
-in-memory map. The only hard requirement is that returned values validate as
-`BenefitRecord`. Use `BenefitRecordSchema.parse(record)` at the repository
-boundary so malformed upstream data fails before it reaches the MCP tools.
+Repository reads must remain pure. They do not create snapshots or change-log
+rows.
 
-### Normalize application deadlines
+## Explicit ingestion and history
 
-`applicationDeadline` is a UTC-only ISO timestamp (`Z`) in the shared Zod and
-JSON Schema contracts. Adapter authors must normalize source-specific deadline
-formats before returning `BenefitRecord` values; do not pass local-time strings,
-offset timestamps, or bare dates through the repository boundary.
+Use the sole write path when a scheduled sync should persist source state:
 
-Korean public-data sources often publish bare dates in KST. Treat a bare date as
-open through the end of that Korean calendar day and use the shared core helper
-to normalize it consistently:
+```ts
+import { BenefitIngestionService, SnapshotStore } from "@mcp-gen-ui/core";
+
+const store = new SnapshotStore("benefits.db");
+const ingestion = new BenefitIngestionService(store);
+const result = ingestion.syncSource({
+  observation,
+  sourceRevision,
+  complete,
+  records,
+});
+```
+
+The batch is validated atomically and scoped by `sourceId`. Identical content
+creates no event; updates report exact RFC 6901 JSON Pointer paths. Deletions are
+allowed only when both `complete=true` and observation status is `ok`.
+Partial/failed syncs never delete data. `getChangeLog` is a paginated read of
+this explicit history.
+
+## Assessment and ranking rules
+
+Assessment and ranking are separate APIs. Each structured constraint declares
+its dimension, allowed values, operator, evidence basis, stable rule ID/version,
+source fields, and explanation.
+
+- Only `authoritative_structured` mismatches may yield `conflict_detected`.
+- `derived_text` and `default` evidence never hard-block; missing profile data
+  yields `needs_more_info` where appropriate.
+- Query, persona, and weights affect `ranking` only, never assessment.
+- Scores mean relative relevance. All effective weights equal to zero yields
+  score `0` with deterministic opaque-ID ordering.
+
+Call `assessBenefit`, `rankBenefit`, or `recommendBenefits` directly for custom
+transports. Do not relabel scores as eligibility, fit, probability, or approval
+likelihood.
+
+## Dates, links, and display text
+
+`applicationDeadline` is an ISO timestamp with offset. Korean bare dates are
+open through 23:59:59 KST and can be normalized with:
 
 ```ts
 import { kstDeadlineToUtc } from "@mcp-gen-ui/core";
 
-const applicationDeadline = kstDeadlineToUtc("2026-07-15");
-// => "2026-07-15T14:59:59.000Z" (2026-07-15 23:59:59 KST)
+kstDeadlineToUtc("2026-07-15"); // 2026-07-15T14:59:59.000Z
 ```
 
-Malformed source dates should be rejected or handled at the adapter boundary so
-`getUpcomingDeadlines` can compare UTC timestamps with `Date.parse` without a
-KST deadline expiring nine hours early or late. Deadlines remain informational
-only and must not be presented as eligibility determinations.
+Use structured `links[]`; an official link must use HTTPS and pass the adapter's
+exact-origin policy. Preserve untrusted upstream prose as normalized display
+text. Instruction-like HTML/Markdown remains inert text; never derive actions or
+links from a title/summary.
 
-See [`examples/custom-benefit-repository.ts`](../examples/custom-benefit-repository.ts)
-for an asynchronous JSON-file implementation.
+## Consistency rules
 
-## Tool behavior supplied by `BenefitToolService`
+`runConsistencyRules(records, rules)` accepts plugin-style
+`ConsistencyRule[]`. Rules report data quality; they must not collect private
+identifiers. The defaults require a source link, warn when an online method has
+no apply link, and detect duplicate document labels.
 
-Once a custom repository is wired in, the gateway tools operate on those records:
+## Canary contract for a new adapter
 
-- `searchBenefits` calls `repository.search()`, runs `recommendBenefits`, and
-  records snapshots when a `SnapshotStore` is provided.
-- `getBenefitDetail` calls `repository.getById(id)` and returns the validated
-  benefit detail.
-- `buildChecklist` derives required documents from the selected benefit and adds
-  a non-eligibility caveat.
-- `getApplicationGuide` derives user-action-only steps from the selected benefit.
-- `getChangeLog` reads snapshot history from the optional `SnapshotStore`.
-
-This keeps the core transport-neutral: MCP, HTTP, tests, or another host can all
-call the same service methods.
-
-## Override consistency rules
-
-Consistency checks are plugin-style functions. You can pass your own
-`ConsistencyRule[]` to `runConsistencyRules` or append to the defaults:
-
-```ts
-import {
-  defaultConsistencyRules,
-  runConsistencyRules,
-  type ConsistencyRule
-} from "@mcp-gen-ui/core";
-
-const requireOwner: ConsistencyRule = {
-  id: "required-owner-evidence",
-  check: (benefit) =>
-    benefit.evidence.some((item) => item.field === "owner")
-      ? []
-      : [
-          {
-            ruleId: "required-owner-evidence",
-            severity: "warning",
-            benefitId: benefit.id,
-            message: "owner evidence should be present for imported records."
-          }
-        ]
-};
-
-const issues = runConsistencyRules(benefits, [
-  ...defaultConsistencyRules,
-  requireOwner
-]);
-```
-
-Rules should report data-quality issues; they should not collect resident
-registration numbers, certificates, passwords, tokens, or other sensitive
-identifiers.
-
-## Use `recommendBenefits` directly
-
-If you need a custom transport or pre/post-processing layer, call the LLM-free
-recommender directly:
-
-```ts
-import { recommendBenefits } from "@mcp-gen-ui/core";
-
-const summaries = recommendBenefits(benefits, {
-  query: "취업 지원",
-  profile: { region: "부산", employmentStatus: "unemployed" }
-});
-```
-
-The recommender returns `candidate`, `needs_more_info`, or `not_applicable` with
-reasons and missing information. Present these results as candidate-framed
-guidance, not as final legal eligibility decisions.
-
-## Canary contract
-
-The daily canary workflow (`canary.yml`) performs a live smoke check of every
-official adapter by calling the real government API with a small `numOfRows=5`
-probe and validating the top-level JSON envelope shape.
-
-**What the canary checks:**
-
-| Source | Endpoint family | Envelope key validated |
-|--------|----------------|------------------------|
-| youth-center | `youthPlcyList/getYouthPlcyList` | `result.youthPolicyList` is an array |
-| bokjiro | `NationalWelfareInformationsV001` (XML-only) | raw XML contains `<wantedList>` with `<resultCode>0` |
-| subsidy24 | `MoefOpenAPI/T_OPD_PRMSCT_SBBGST` | `response.body` is an object |
-
-**Contract for new adapters:** when adding a new official source, add a
-corresponding entry to `packages/canary-check/src/run.ts` (the `SOURCES`
-array) with:
-- `name` — a short kebab-case identifier
-- `envKeys` — `[<SOURCE_API_KEY>, 'DATA_GO_KR_API_KEY']` (per-source first,
-  shared fallback second). Omit the shared fallback when the source does not
-  accept a data.go.kr key (e.g. youth-center requires a youthcenter.go.kr key)
-- `endpoint` — the live API base URL
-- `queryParams` — a function returning the minimal probe query (small
-  `numOfRows`, include `serviceKey`)
-- `validate` — a function exported from `checks.ts`, with unit tests in
-  `checks.test.ts`, that verifies the top-level response envelope
-
-**Failure behaviour:**
-
-- Shape mismatch or non-2xx → an AFK-tagged GitHub issue is automatically filed
-  (deduplicated: no spam on consecutive failures).
-- Missing secret → source is skipped with a neutral (non-failing) status so
-  public forks and pre-activation repos stay green.
-- Canary failures **do not** block the main CI workflow.
+1. Implement `BenefitSourceAdapter.search()` returning an `AdapterResult` with a
+   stable `SourceObservation`.
+2. Enforce exact HTTPS origin, response type/size, timeout, abort, and bounded
+   retry policy through the shared transport.
+3. Add recorded official fixtures and boundary tests for upstream error
+   envelopes, malformed totals/items, partial pages, rejected records, unsafe
+   links, and key redaction.
+4. Add a constructor entry to `packages/canary-check/src/run.ts`. The canary
+   invokes the production adapter itself; do not add a second envelope parser.
+5. Keep missing secrets neutral. Treat `invalid_payload` and record-rejection
+   partials as drift; a deliberately bounded `page_truncated` result is a
+   healthy warning.
 
 ## Extension checklist
 
-Before opening a PR or enabling a custom backend:
-
-1. Validate every external record with `BenefitRecordSchema`.
-2. Run `pnpm build && pnpm typecheck && pnpm test`.
-3. Keep tests fixture-first or custom-repository-backed so they run without live
-   government dependencies.
-4. Preserve safety boundaries: no sensitive-identifier storage, no login or
-   submission automation, and no definitive eligibility claims.
+1. Validate strict v2 records, repository results, and tool responses.
+2. Publish versioned golden fixtures for consumer CI when changing a contract.
+3. Run `pnpm schemas`, `pnpm build`, `pnpm typecheck`, `pnpm test`, and
+   `pnpm audit --prod`.
+4. Preserve coarse-profile, provenance, official-link, fail-closed mode, and
+   user-action-only boundaries.

@@ -6,9 +6,10 @@ import { describe, expect, it } from 'vitest';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 const publishablePackages = [
-  { name: 'schema', directory: 'packages/schema', sideEffects: false },
-  { name: 'core', directory: 'packages/core', sideEffects: false },
-  { name: 'mcp-server', directory: 'packages/mcp-server', hasBin: true },
+  { name: 'schema', directory: 'packages/schema', sideEffects: false, files: ['dist', 'schema', 'fixtures'] },
+  { name: 'core', directory: 'packages/core', sideEffects: false, files: ['dist'] },
+  { name: 'adapters', directory: 'packages/adapters', sideEffects: false, files: ['dist'] },
+  { name: 'mcp-server', directory: 'packages/mcp-server', hasBin: true, files: ['dist'] },
 ] as const;
 
 function readPackageJson(directory: string) {
@@ -37,7 +38,7 @@ describe('publishable package metadata', () => {
       expect(packageJson.bugs).toMatchObject({
         url: 'https://github.com/orca-svg/mcp-gateway-genui/issues',
       });
-      expect(packageJson.files).toEqual(['dist']);
+      expect(packageJson.files).toEqual(pkg.files);
       expect(packageJson.publishConfig).toEqual({ access: 'public', provenance: true });
       expect(existsSync(join(repoRoot, pkg.directory, 'README.md'))).toBe(true);
 

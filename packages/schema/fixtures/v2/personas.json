@@ -1,0 +1,97 @@
+{
+  "schemaVersion": "persona-list.v2",
+  "dataStatus": {
+    "mode": "fixture",
+    "partial": false,
+    "sources": [
+      {
+        "sourceId": "fixture-benefits",
+        "status": "ok",
+        "retrievedAt": "2026-07-09T23:59:00.000Z",
+        "recordCount": 1,
+        "adapterVersion": "0.3.0"
+      }
+    ]
+  },
+  "personas": [
+    {
+      "id": "youth_jobseeker",
+      "description": "청년 구직자를 위한 공개 순위 가중치입니다.",
+      "weights": {
+        "region": 1,
+        "age": 2,
+        "student": 1,
+        "employment": 3,
+        "household": 1,
+        "category": 1,
+        "query": 2
+      }
+    },
+    {
+      "id": "university_student",
+      "description": "대학생을 위한 공개 순위 가중치입니다.",
+      "weights": {
+        "region": 1,
+        "age": 2,
+        "student": 3,
+        "employment": 1,
+        "household": 1,
+        "category": 2,
+        "query": 1
+      }
+    },
+    {
+      "id": "newlywed_family",
+      "description": "신혼 가구를 위한 공개 순위 가중치입니다.",
+      "weights": {
+        "region": 2,
+        "age": 1,
+        "student": 1,
+        "employment": 1,
+        "household": 3,
+        "category": 2,
+        "query": 1
+      }
+    },
+    {
+      "id": "single_parent",
+      "description": "한부모 가구를 위한 공개 순위 가중치입니다.",
+      "weights": {
+        "region": 2,
+        "age": 1,
+        "student": 1,
+        "employment": 1,
+        "household": 3,
+        "category": 2,
+        "query": 1
+      }
+    },
+    {
+      "id": "senior",
+      "description": "고령층을 위한 공개 순위 가중치입니다.",
+      "weights": {
+        "region": 1.5,
+        "age": 3,
+        "student": 1,
+        "employment": 1,
+        "household": 1,
+        "category": 2,
+        "query": 1
+      }
+    },
+    {
+      "id": "general",
+      "description": "모든 차원에 동일한 공개 순위 가중치를 적용합니다.",
+      "weights": {
+        "region": 1,
+        "age": 1,
+        "student": 1,
+        "employment": 1,
+        "household": 1,
+        "category": 1,
+        "query": 1
+      }
+    }
+  ],
+  "generatedAt": "2026-07-10T00:00:00.000Z"
+}

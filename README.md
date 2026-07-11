@@ -18,7 +18,7 @@ It exposes Korean public-benefit data through deterministic MCP tools and
 renders the structured JSON responses as compact UI. The server is **LLM-free** —
 the MCP host model handles the conversation and decides which tools to call.
 
-> **Status:** G-1 MVP. This repository is a clean-room reimplementation and
+> **Status:** G-4 operational-trust release line. This repository is a clean-room reimplementation and
 > continued maintenance of the original [KOI competition project](https://github.com/koi2026/mcp-gen-ui-gateway),
 > used only as a specification (PRD, schema definitions, host prompts). See `NOTICE`.
 
@@ -62,7 +62,10 @@ The server speaks MCP over stdio. Point an MCP host at the built binary:
     "mcp-gen-ui-gateway": {
       "command": "node",
       "args": ["packages/mcp-server/dist/index.js"],
-      "env": { "MCP_GEN_UI_DB_PATH": "mcp-gen-ui-gateway.db" }
+      "env": {
+        "MCP_GEN_UI_REPOSITORY_MODE": "fixture",
+        "MCP_GEN_UI_DB_PATH": "mcp-gen-ui-gateway.db"
+      }
     }
   }
 }
@@ -72,12 +75,12 @@ See `docs/host-prompts.md` for the recommended host prompt and an example flow.
 
 ## Why
 
-Public-benefit information is scattered across government pages with eligibility
-rules that are hard to interpret. This gateway normalizes that data behind stable
+Public-benefit information is scattered across government pages with qualification
+rules that are hard to compare. This gateway normalizes that data behind stable
 JSON contracts so any MCP host can:
 
 - search benefits from **non-identifying** profile conditions,
-- understand each result as a **candidate / needs-more-info / not-applicable**,
+- distinguish **`candidate` / `needs_more_info` / `conflict_detected`** assessment,
 - see the **reasons** and the **conditions still to verify**,
 - get a **preparation checklist** and a **user-action-only application guide**.
 
@@ -89,12 +92,14 @@ Recommendations are candidates, not eligibility decisions, and users must verify
 ## Architecture
 
 ```
-Host (Claude / any MCP host)
-   └─ MCP tool call ─▶ BenefitToolService            (packages/core)
-                         ├─ BenefitRepository (fixtures)
-                         ├─ recommendBenefits (rule-based, LLM-free)
-                         └─ SnapshotStore (node:sqlite)
-                       └─ Zod-validated JSON ─▶ demo-ui (domain JSON → A2UI → render)
+Host (any MCP client)
+   └─ MCP tool call ─▶ BenefitToolService              (packages/core)
+                         ├─ source-aware read repository (fixture/live/mixed)
+                         ├─ assessment (structured constraints only hard-conflict)
+                         └─ relative-relevance ranking (rule-based, LLM-free)
+                       └─ strict v2 JSON ─▶ Gen UI / A2UI consumer
+
+Source adapter ─▶ BenefitIngestionService ─▶ SnapshotStore (explicit write path)
 ```
 
 ### Monorepo layout
@@ -114,26 +119,29 @@ gateway without taking on the demo app or repository internals:
 
 | Package | Public contract |
 | --- | --- |
-| `@mcp-gen-ui/schema` | Zod schemas and generated JSON Schema types that define tool input/output contracts, including `profile.persona`, request `weights`, result `score`, `scoreBreakdown`, and structured `applicationDeadline` fields. |
-| `@mcp-gen-ui/core` | Stable embedder APIs: `BenefitRepository`, `BenefitToolService`, `SnapshotStore`, persona helpers (`defaultPersonaRegistry`, `resolveWeights`), and the candidate-framed recommendation/checklist/deadline helpers they compose. |
-| `@mcp-gen-ui/adapters` | Optional `BenefitRepository` implementations for fan-in, TTL caching, and live 온통청년 · 복지로 · 보조금24 public-benefit data. |
+| `@mcp-gen-ui/schema` | Strict Zod 4 contracts and draft 2020-12 JSON Schema for all seven v2 tools, plus versioned fixtures for representative contract states. |
+| `@mcp-gen-ui/core` | Source-aware read repositories, assessment/ranking, explicit ingestion, atomic SQLite snapshots/change history, and `BenefitToolService`. |
+| `@mcp-gen-ui/adapters` | Optional `BenefitRepository` implementations for fan-in, TTL caching, and live 온통청년 · 복지로 · 기획예산처 국고보조금 공모사업 data. |
 | `@mcp-gen-ui/mcp-server` | The stdio MCP server binary that exposes the gateway tools, including persona preset discovery and upcoming-deadline retrieval. |
 
 `fixtureBenefits` is exported as example data for tests, demos, and local
 experiments. It is not a live government data source or a stability promise about
 real benefit availability.
 
-### Persona and score contract
+### Assessment and ranking contract
 
 `searchBenefits` accepts a non-identifying `profile.persona` and optional
 per-dimension `weights`. The built-in personas are `youth_jobseeker`,
 `university_student`, `newlywed_family`, `single_parent`, `senior`, and
 `general`; request weights override the selected preset only for the dimensions
-provided. Result summaries include a normalized `score` plus `scoreBreakdown`
-items (`dimension`, `signal`, `weight`, `contribution`, `explanation`) so hosts
-can render transparent ranking explanations without claiming legal eligibility.
-`getUpcomingDeadlines` returns the same score fields alongside each structured
-UTC `applicationDeadline`.
+provided. Every result keeps `assessment` separate from `ranking`: only a
+conflicting `authoritative_structured` constraint can produce
+`conflict_detected`; derived text and defaults never hard-block. `ranking.score`
+is relative relevance, not probability or eligibility, and
+`ranking.breakdown` explains its dimensions. Persona, query, and weights affect
+ranking only. Stable opaque IDs break ties, including the all-zero-weight case.
+`getUpcomingDeadlines` reuses this contract alongside a structured UTC
+`applicationDeadline`.
 
 ### Embed the core package
 
@@ -147,7 +155,7 @@ import { BenefitToolService, FixtureBenefitRepository } from "@mcp-gen-ui/core";
 const service = new BenefitToolService(new FixtureBenefitRepository());
 const results = await service.searchBenefits({
   query: "부산 취업 지원",
-  profile: { region: "부산", employmentStatus: "unemployed" }
+  profile: { regionCode: "KR-26", employmentStatus: "unemployed" }
 });
 ```
 
@@ -167,29 +175,57 @@ The stdio MCP server currently exposes these seven deterministic tools:
 
 | Tool | Input | Output |
 | --- | --- | --- |
-| `searchBenefits` | `{ query, profile, weights? }` | Ranked benefit candidates with evidence, candidate-framed status, `score`, and `scoreBreakdown`. |
+| `searchBenefits` | `{ query, profile?, weights? }` | `benefit-search.v2`: source status, assessment, relative ranking, provenance, verified links, and freshness. |
 | `listPersonas` | `{}` | Built-in persona presets and scoring weights for host selection. |
 | `getBenefitDetail` | `{ id }` | Structured benefit detail, including `applicationDeadline` when known. |
-| `getUpcomingDeadlines` | `{ profile?, withinDays? }` | Deadline-bearing benefit candidates sorted by soonest application deadline, with score fields reused from recommendations. |
+| `getUpcomingDeadlines` | `{ profile?, withinDays?, weights? }` | `upcoming-deadlines.v2`; `withinDays` is an integer from 1 through 365. |
 | `buildChecklist` | `{ benefitId }` | Document checklist with a non-eligibility caveat. |
 | `getApplicationGuide` | `{ benefitId }` | User-action-only application steps. |
-| `getChangeLog` | `{ entityId? }` | Snapshot / change-log entries. |
+| `getChangeLog` | `{ entityId?, cursor?, limit? }` | Paginated snapshot changes; `limit` is 1–100 (default 50), and each entry identifies its source. |
+
+All inputs and success outputs are strict. Unknown keys—including PII-shaped
+keys—are rejected. MCP failures are stable JSON text errors (`mcp-error.v1`);
+successes expose identical JSON in `structuredContent` and `TextContent`.
+
+## Repository mode
+
+Runtime data selection is explicit:
+
+| Variable | Meaning |
+| --- | --- |
+| `MCP_GEN_UI_REPOSITORY_MODE` | `fixture`, `live`, or `mixed`. Required when `NODE_ENV=production`; non-production defaults to `fixture`. |
+| `MCP_GEN_UI_LIVE_SOURCES` | Optional comma list from `youth-center,bokjiro,subsidy24`. Omission discovers sources with configured keys. |
+| `YOUTH_CENTER_API_KEY` | Separate 온통청년 key; no shared-key fallback. |
+| `BOKJIRO_API_KEY` / `SUBSIDY24_API_KEY` | Per-source data.go.kr keys. `DATA_GO_KR_API_KEY` is their shared fallback. |
+| `MCP_GEN_UI_CACHE_TTL_MS` | Live/mixed read cache, 1 second–24 hours; default 5 minutes. |
+| `YOUTH_CENTER_API_ENDPOINT` / `BOKJIRO_API_ENDPOINT` / `SUBSIDY24_API_ENDPOINT` | Optional endpoint overrides. Each must keep its source's exact official HTTPS origin and contain no credentials, query, or fragment. |
+| `MCP_GEN_UI_DB_PATH` | SQLite snapshot/change-history path; defaults to `mcp-gen-ui-gateway.db`. Use `:memory:` for ephemeral runs. |
+
+`live` and `mixed` fail closed if no source is selected or a selected source is
+missing its key. There is no silent fallback from live data to fixtures. Every
+response carries `dataStatus.mode`, `partial`, and per-source observations.
+See [`docs/data-sources.md`](docs/data-sources.md) for source contracts and
+[`docs/migration-v0.2-to-v0.3.md`](docs/migration-v0.2-to-v0.3.md) for the v2
+migration.
 
 ## Safety boundaries
 
 - **No sensitive identifiers** are stored (resident numbers, passwords, certificates, tokens).
+- Profiles accept only coarse enums such as ISO region code and age band; unknown or PII-shaped fields fail validation.
 - Recommendations are **candidates, not eligibility decisions**, and ship with caveats.
+- Only separately structured authoritative constraints can report a conflict; extracted prose remains ranking evidence.
 - **No login, identity verification, or submission automation.**
 
 ## Documentation
 
 - [`docs/data-sources.md`](docs/data-sources.md) — official fixture source attribution, license notes, and source URL coverage.
+- [`docs/migration-v0.2-to-v0.3.md`](docs/migration-v0.2-to-v0.3.md) — strict v2 contract and runtime migration.
 - [`docs/prd.md`](docs/prd.md) — product spec and scope.
 - [`docs/host-prompts.md`](docs/host-prompts.md) — recommended host prompt + tools.
 - [`docs/personas.md`](docs/personas.md) — persona weighting model, preset rationale, and score contract.
 - [`docs/extending.md`](docs/extending.md) — bring your own data source and other extension points.
 - [`docs/git-workflow.md`](docs/git-workflow.md) — branching and PR workflow.
-- [`docs/roadmap.md`](docs/roadmap.md) — G-1 scope and deferred work (incl. browser-assist).
+- [`docs/roadmap.md`](docs/roadmap.md) — milestone status and deferred work (including browser-assist).
 - [`CONTRIBUTING.md`](CONTRIBUTING.md), [`SECURITY.md`](SECURITY.md), [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 ## License

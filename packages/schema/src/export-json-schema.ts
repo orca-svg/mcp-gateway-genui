@@ -1,39 +1,17 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { zodToJsonSchema } from "zod-to-json-schema";
-import {
-  ApplicationGuideResponseSchema,
-  BenefitDetailSchema,
-  BenefitSearchRequestSchema,
-  BenefitSearchResponseSchema,
-  ChangeLogResponseSchema,
-  ChecklistResponseSchema,
-  UpcomingDeadlinesRequestSchema,
-  UpcomingDeadlinesResponseSchema
-} from "./index.js";
+import { fileURLToPath } from "node:url";
+import { generatePublicJsonSchemas } from "./json-schema.js";
 
-/**
- * Exports the public contracts as JSON Schema so non-TypeScript clients can
- * validate the same tool inputs/outputs. Run with `pnpm schemas`.
- */
-const schemas = {
-  BenefitSearchRequest: BenefitSearchRequestSchema,
-  BenefitSearchResponse: BenefitSearchResponseSchema,
-  UpcomingDeadlinesRequest: UpcomingDeadlinesRequestSchema,
-  UpcomingDeadlinesResponse: UpcomingDeadlinesResponseSchema,
-  BenefitDetail: BenefitDetailSchema,
-  ChecklistResponse: ChecklistResponseSchema,
-  ApplicationGuideResponse: ApplicationGuideResponseSchema,
-  ChangeLogResponse: ChangeLogResponseSchema
-};
-
-const outDir = join(process.cwd(), "schema");
+/** Export deterministic JSON Schema draft 2020-12 artifacts. */
+const outDir = fileURLToPath(new URL("../schema/v2/", import.meta.url));
+rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
 
-for (const [name, schema] of Object.entries(schemas)) {
+for (const [fileName, schema] of generatePublicJsonSchemas()) {
   writeFileSync(
-    join(outDir, `${name}.schema.json`),
-    `${JSON.stringify(zodToJsonSchema(schema, name), null, 2)}\n`
+    join(outDir, fileName),
+    `${JSON.stringify(schema, null, 2)}\n`
   );
-  console.log(`exported schema/${name}.schema.json`);
+  console.log(`exported schema/v2/${fileName}`);
 }

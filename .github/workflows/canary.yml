@@ -35,11 +35,13 @@ jobs:
 
       - name: Run canary smoke checks
         # Secrets absent (public forks, pre-activation) → script exits 0 (neutral).
-        # Any configured source that fails → script exits 1 and files an AFK issue.
+        # Runs the production adapters (transport, envelope parsing, normalization,
+        # provenance and schema validation). Any configured source that fails →
+        # script exits 1 and files an AFK issue.
         run: node packages/canary-check/dist/run.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Shared data.go.kr key — per-source overrides (YOUTH_CENTER_API_KEY etc.) take precedence.
+          # Shared data.go.kr key — Bokjiro/Subsidy per-source overrides take precedence.
           DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
           # Per-source overrides (optional — used when different keys are needed per API)
           YOUTH_CENTER_API_KEY: ${{ secrets.YOUTH_CENTER_API_KEY }}

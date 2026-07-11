@@ -38,6 +38,11 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Verify generated schemas are current
+        run: |
+          pnpm schemas
+          git diff --exit-code -- packages/schema/schema
+
       # Go-live gate: versioning and publishing stay off until the maintainer
       # is ready (npm org `mcp-gen-ui` created, NPM_TOKEN added, repo public).
       # Flip on by setting the repository variable RELEASE_ENABLED=true. Until

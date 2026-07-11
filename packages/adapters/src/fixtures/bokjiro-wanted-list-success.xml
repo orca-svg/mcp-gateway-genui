@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<wantedList>
+  <totalCount>2</totalCount>
+  <pageNo>1</pageNo>
+  <numOfRows>2</numOfRows>
+  <resultCode>0</resultCode>
+  <resultMessage>SUCCESS</resultMessage>
+  <servList>
+    <inqNum>132</inqNum>
+    <intrsThemaArray>주거</intrsThemaArray>
+    <jurMnofNm>보건복지부</jurMnofNm>
+    <jurOrgNm>복지정책과</jurOrgNm>
+    <lifeArray>청년</lifeArray>
+    <onapPsbltYn>Y</onapPsbltYn>
+    <rprsCtadr>129</rprsCtadr>
+    <servDgst>주거 상담과 공공 지원 정보를 안내합니다.</servDgst>
+    <servDtlLink>https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00004660</servDtlLink>
+    <servId>WLF00004660</servId>
+    <servNm>청년 주거 상담</servNm>
+    <sprtCycNm>수시</sprtCycNm>
+    <srvPvsnNm>정보제공</srvPvsnNm>
+    <svcfrstRegTs>2026-01-26</svcfrstRegTs>
+    <trgterIndvdlArray>개인</trgterIndvdlArray>
+  </servList>
+  <servList>
+    <inqNum>81</inqNum>
+    <intrsThemaArray>건강</intrsThemaArray>
+    <jurMnofNm>보건복지부</jurMnofNm>
+    <jurOrgNm>건강정책과</jurOrgNm>
+    <lifeArray>전생애</lifeArray>
+    <onapPsbltYn>N</onapPsbltYn>
+    <rprsCtadr>129</rprsCtadr>
+    <servDgst>공공 건강 상담 정보를 제공합니다.</servDgst>
+    <servDtlLink>https://www.bokjiro.go.kr/ssis-tbu/twataa/wlfareInfo/moveTWAT52011M.do?wlfareInfoId=WLF00000060</servDtlLink>
+    <servId>WLF00000060</servId>
+    <servNm>공공 건강 상담</servNm>
+    <sprtCycNm>수시</sprtCycNm>
+    <srvPvsnNm>정보제공</srvPvsnNm>
+    <svcfrstRegTs>2026-01-26</svcfrstRegTs>
+    <trgterIndvdlArray>전국민</trgterIndvdlArray>
+  </servList>
+</wantedList>

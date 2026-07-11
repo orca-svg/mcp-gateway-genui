@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "persona-list.v2"
+    },
+    "dataStatus": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "fixture",
+            "live",
+            "mixed"
+          ]
+        },
+        "partial": {
+          "type": "boolean"
+        },
+        "sources": {
+          "minItems": 1,
+          "maxItems": 64,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        }
+      },
+      "required": [
+        "mode",
+        "partial",
+        "sources"
+      ],
+      "additionalProperties": false
+    },
+    "personas": {
+      "maxItems": 32,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema2"
+      }
+    },
+    "generatedAt": {
+      "$ref": "#/$defs/__schema1"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "dataStatus",
+    "personas",
+    "generatedAt"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "sourceId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9:_-]{0,127}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "partial",
+            "timeout",
+            "unavailable",
+            "invalid_payload"
+          ]
+        },
+        "retrievedAt": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "recordCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        },
+        "errorCode": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+        },
+        "adapterVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*$"
+        }
+      },
+      "required": [
+        "sourceId",
+        "status",
+        "retrievedAt",
+        "recordCount",
+        "adapterVersion"
+      ],
+      "additionalProperties": false
+    },
+    "__schema1": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "__schema2": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "youth_jobseeker",
+            "university_student",
+            "newlywed_family",
+            "single_parent",
+            "senior",
+            "general"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "format": "normalized-display-text",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "weights": {
+          "type": "object",
+          "properties": {
+            "region": {
+              "$ref": "#/$defs/__schema3"
+            },
+            "age": {
+              "$ref": "#/$defs/__schema3"
+            },
+            "student": {
+              "$ref": "#/$defs/__schema3"
+            },
+            "employment": {
+              "$ref": "#/$defs/__schema3"
+            },
+            "household": {
+              "$ref": "#/$defs/__schema3"
+            },
+            "category": {
+              "$ref": "#/$defs/__schema3"
+            },
+            "query": {
+              "$ref": "#/$defs/__schema3"
+            }
+          },
+          "required": [
+            "region",
+            "age",
+            "student",
+            "employment",
+            "household",
+            "category",
+            "query"
+          ],
+          "additionalProperties": false,
+          "description": "If all effective weights are zero, every ranking score is 0 and candidates use deterministic opaque-ID ordering; assessment is unchanged."
+        }
+      },
+      "required": [
+        "id",
+        "description",
+        "weights"
+      ],
+      "additionalProperties": false
+    },
+    "__schema3": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+    }
+  },
+  "$id": "urn:mcp-gen-ui:schema:v2:ListPersonasResponse"
+}

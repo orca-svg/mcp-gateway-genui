@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "benefit-search.v2",
+  "query": "취업 지원",
+  "profile": {
+    "studentStatus": "unknown",
+    "employmentStatus": "unemployed",
+    "householdType": "unknown",
+    "interests": [
+      "employment"
+    ]
+  },
+  "rankingPolicy": {
+    "id": "rule-based-v2",
+    "version": "2.0.0",
+    "persona": "general",
+    "effectiveWeights": {
+      "region": 1,
+      "age": 1,
+      "student": 1,
+      "employment": 1,
+      "household": 1,
+      "category": 1,
+      "query": 1
+    },
+    "scoreMeaning": "relative_relevance_not_eligibility"
+  },
+  "dataStatus": {
+    "mode": "mixed",
+    "partial": true,
+    "sources": [
+      {
+        "sourceId": "source-a",
+        "status": "ok",
+        "retrievedAt": "2026-07-09T23:59:00.000Z",
+        "recordCount": 1,
+        "adapterVersion": "1.4.0"
+      },
+      {
+        "sourceId": "source-b",
+        "status": "timeout",
+        "retrievedAt": "2026-07-09T23:59:00.000Z",
+        "recordCount": 0,
+        "errorCode": "UPSTREAM_TIMEOUT",
+        "adapterVersion": "2.1.0"
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "source-a:benefit-002",
+      "title": "전국 취업 지원 후보",
+      "provider": "고용 지원 기관",
+      "category": "employment",
+      "summary": "일부 출처가 응답하지 않은 상태에서 확인된 취업 지원 후보입니다.",
+      "assessment": {
+        "status": "needs_more_info",
+        "constraints": [
+          {
+            "dimension": "employment",
+            "outcome": "unknown",
+            "basis": "default",
+            "ruleId": "default.employment",
+            "ruleVersion": "1.0.0",
+            "sourceFields": [],
+            "explanation": "구조화된 고용 상태 조건이 없어 추가 확인이 필요합니다."
+          }
+        ],
+        "missingInfo": [
+          "공식 공고에서 고용 상태 조건을 확인해야 합니다."
+        ]
+      },
+      "ranking": {
+        "score": 0.61,
+        "breakdown": [
+          {
+            "dimension": "query",
+            "signal": 0.61,
+            "weight": 1,
+            "contribution": 0.61,
+            "explanation": "검색어와 설명이 부분적으로 관련됩니다."
+          }
+        ]
+      },
+      "provenance": [
+        {
+          "field": "/title",
+          "sourceId": "source-a",
+          "sourceRecordId": "benefit-002",
+          "authority": "authoritative_structured",
+          "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "observedAt": "2026-07-09T23:59:00.000Z",
+          "sourceRevision": "revision-7"
+        }
+      ],
+      "links": [
+        {
+          "rel": "source",
+          "url": "http://legacy.example.go.kr/benefit-002",
+          "official": false,
+          "health": "unchecked"
+        }
+      ],
+      "freshness": {
+        "status": "fresh",
+        "observedAt": "2026-07-09T23:59:00.000Z",
+        "staleAfter": "2026-08-09T23:59:00.000Z"
+      }
+    }
+  ],
+  "generatedAt": "2026-07-10T00:00:00.000Z"
+}

@@ -266,7 +266,7 @@ h4 {
   background: var(--warn);
 }
 
-.benefit-card.not_applicable::before {
+.benefit-card.conflict_detected::before {
   background: #94a3b8;
 }
 

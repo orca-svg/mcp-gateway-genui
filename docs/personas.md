@@ -8,14 +8,18 @@ tool.
 
 - Each preset assigns a weight to every scoring dimension. `general` is the
   backward-compatible uniform-weight default (all dimensions `1`).
-- A higher weight makes that dimension matter more in ranking; no dimension is
-  ever disabled.
+- A higher weight makes that dimension matter more in ranking. Request weights
+  may set a dimension to zero; if all effective weights are zero, every score is
+  zero and opaque IDs provide deterministic ordering.
 - Request-level `weights` are merged on top of the selected persona via
   `resolveWeights(persona, overrides)`, so a host can fine-tune without
   redefining a preset.
 
 Recommendations remain candidates, not eligibility decisions, regardless of the
 persona in effect.
+
+Personas and request weights change relative ranking only. They never change a
+candidate's assessment or turn text-derived evidence into a hard conflict.
 
 ## Built-in presets
 
@@ -24,11 +28,11 @@ Scoring dimensions: `region`, `age`, `student`, `employment`, `household`,
 
 | Persona | region | age | student | employment | household | category | query | Audience |
 |---|---|---|---|---|---|---|---|---|
-| `youth_jobseeker` | 1 | 2 | 1 | 3 | 1 | 1.5 | 2 | Youth job seekers: employment fit, age fit, query intent |
-| `university_student` | 1 | 2 | 3 | 1 | 1 | 2 | 1 | University students: student eligibility, age fit, category |
+| `youth_jobseeker` | 1 | 2 | 1 | 3 | 1 | 1.5 | 2 | Youth job seekers: employment/age signals and query intent |
+| `university_student` | 1 | 2 | 3 | 1 | 1 | 2 | 1 | University students: student/age signals and category |
 | `newlywed_family` | 2 | 1.5 | 1 | 1 | 3 | 2 | 1 | Newlywed families: household, housing/category, region |
 | `single_parent` | 2 | 1 | 1 | 1.5 | 3 | 2 | 1 | Single-parent households: household, family/category, region, employment |
-| `senior` | 1.5 | 3 | 1 | 1 | 1 | 2 | 1 | Seniors: age fit, local availability, category |
+| `senior` | 1.5 | 3 | 1 | 1 | 1 | 2 | 1 | Seniors: age/regional signals and category |
 | `general` | 1 | 1 | 1 | 1 | 1 | 1 | 1 | General-purpose uniform default |
 
 ## Usage
@@ -39,7 +43,7 @@ import { BenefitToolService, resolveWeights } from "@mcp-gen-ui/core";
 // Pick a persona per request via the user profile…
 await service.searchBenefits({
   query: "서울 거주 대학생 지원",
-  profile: { region: "서울", studentStatus: "student", persona: "university_student" }
+  profile: { regionCode: "KR-11", studentStatus: "student", persona: "university_student" }
 });
 
 // …list the presets a host can surface for selection…

@@ -1,123 +1,183 @@
-import { existsSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import type { BenefitRecord } from "@mcp-gen-ui/schema";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import {
+  BenefitRepositoryDetailResultSchema,
+  BenefitRepositoryResultSchema,
+  DataStatusSchema,
+  type BenefitRecord,
+  type BenefitRepositoryDetailResult,
+  type BenefitRepositoryResult,
+  type DataStatus
+} from "@mcp-gen-ui/schema";
 import { describe, expect, it } from "vitest";
+import { fixtureBenefits } from "./fixtures.js";
 import type { BenefitRepository } from "./repository.js";
-import { SnapshotStore } from "./sqlite-store.js";
-import { BenefitToolService, NON_ELIGIBILITY_DISCLAIMER } from "./tool-service.js";
+import { dataStatusFromObservations } from "./repository.js";
+import {
+  BenefitToolService,
+  NON_ELIGIBILITY_DISCLAIMER
+} from "./tool-service.js";
 
-const arbitraryBenefit: BenefitRecord = {
-  id: "busan-caregiver-training",
-  title: "부산 돌봄 교육 바우처",
-  provider: "부산광역시",
-  category: "employment",
-  summary: "돌봄 분야 재취업 준비자를 위한 교육비 지원입니다.",
-  target: "부산 거주 미취업 구직자 중 돌봄 직무 교육 참여 희망자",
-  eligibility: ["부산 거주", "미취업", "교육 참여 의사 확인"],
-  applicationPeriod: "분기별 모집",
-  applicationDeadline: "2030-08-01T09:00:00.000Z",
-  fee: "없음",
-  processingTime: "접수 후 14일 이내",
-  documents: [
-    {
-      id: "residence-confirmation",
-      label: "부산 거주 확인 서류",
-      required: true,
-      source: "program"
-    },
-    {
-      id: "job-seeker-registration",
-      label: "구직 등록 확인서",
-      required: true,
-      source: "program"
-    }
-  ],
-  applicationMethods: ["온라인 신청", "교육기관 방문 상담"],
-  applicationUrl: "https://www.busan.go.kr/",
-  sourceUrl: "https://www.busan.go.kr/",
-  lastFetchedAt: "2026-06-01T00:00:00.000Z",
-  evidence: [],
-  searchableText: "부산 돌봄 교육 바우처 재취업 구직 직무 훈련",
-  regionTags: ["부산"],
-  ageRanges: ["thirties", "forties", "fifties"],
-  studentOnly: false,
-  employmentStatuses: ["unemployed"]
-};
+const NOW = "2026-07-10T00:00:00.000Z";
+const CUSTOM_SOURCE_ID = "custom-json-source";
+const arbitraryBenefit = fixtureBenefits[0]!;
 
 class AsyncMapBenefitRepository implements BenefitRepository {
+  readonly mode = "live" as const;
   private readonly benefits = new Map<string, BenefitRecord>([
     [arbitraryBenefit.id, arbitraryBenefit]
   ]);
 
-  async search(): Promise<BenefitRecord[]> {
+  async search(): Promise<BenefitRepositoryResult> {
     await Promise.resolve();
-    return [...this.benefits.values()];
+    const records = [...this.benefits.values()];
+    return BenefitRepositoryResultSchema.parse({
+      records,
+      dataStatus: this.dataStatus(records.length)
+    });
   }
 
-  async getById(id: string): Promise<BenefitRecord | undefined> {
+  async getById(id: string): Promise<BenefitRepositoryDetailResult> {
     await Promise.resolve();
-    return this.benefits.get(id);
+    const record = this.benefits.get(id);
+    return BenefitRepositoryDetailResultSchema.parse({
+      record,
+      dataStatus: this.dataStatus(record ? 1 : 0)
+    });
+  }
+
+  private dataStatus(recordCount: number): DataStatus {
+    return DataStatusSchema.parse({
+      mode: this.mode,
+      partial: false,
+      sources: [
+        {
+          sourceId: CUSTOM_SOURCE_ID,
+          status: "ok",
+          retrievedAt: NOW,
+          recordCount,
+          adapterVersion: "custom-repository-2"
+        }
+      ]
+    });
   }
 }
 
-describe("custom BenefitRepository extension contract", () => {
-  it("serves all tools through an asynchronous custom repository", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "mcp-gen-ui-custom-repo-"));
-    const store = new SnapshotStore(join(dir, "test.db"));
-    const service = new BenefitToolService(new AsyncMapBenefitRepository(), store);
-
-    const search = await service.searchBenefits({
-      query: "부산 돌봄 교육",
-      profile: {
-        region: "부산",
-        ageRange: "forties",
-        employmentStatus: "unemployed",
-        interests: ["employment"]
+describe("custom BenefitRepository v2 extension contract", () => {
+  it("marks an all-source failure as partial while preserving every observation", () => {
+    const dataStatus = dataStatusFromObservations("live", [
+      {
+        sourceId: "source-a",
+        status: "timeout",
+        retrievedAt: NOW,
+        recordCount: 0,
+        errorCode: "timeout",
+        adapterVersion: "1.0.0"
+      },
+      {
+        sourceId: "source-b",
+        status: "unavailable",
+        retrievedAt: NOW,
+        recordCount: 0,
+        errorCode: "unavailable",
+        adapterVersion: "1.0.0"
       }
-    });
-    const detail = await service.getBenefitDetail(arbitraryBenefit.id);
-    const deadlines = await service.getUpcomingDeadlines({
-      profile: {
-        region: "부산",
-        ageRange: "forties",
-        employmentStatus: "unemployed",
-        interests: ["employment"]
-      }
-    });
-    const checklist = await service.buildChecklist(arbitraryBenefit.id);
-    const guide = await service.getApplicationGuide(arbitraryBenefit.id);
-    const changeLog = await service.getChangeLog(arbitraryBenefit.id);
-
-    expect(search.results).toHaveLength(1);
-    expect(search.results[0]).toMatchObject({
-      id: arbitraryBenefit.id,
-      status: "candidate",
-      title: arbitraryBenefit.title
-    });
-    expect(search.results[0]?.reasons).toContain("부산 지역 조건과 일치합니다.");
-    expect(detail.title).toBe(arbitraryBenefit.title);
-    expect(deadlines.results.map((result) => result.id)).toEqual([arbitraryBenefit.id]);
-    expect(checklist.items.map((item) => item.id)).toEqual([
-      "residence-confirmation",
-      "job-seeker-registration"
     ]);
-    expect(checklist.caveats[0]).toBe(NON_ELIGIBILITY_DISCLAIMER);
-    expect(guide.steps.every((step) => step.requiresUserAction)).toBe(true);
-    expect(guide.safetyNotice).toContain("대신 수행하지 않습니다");
-    expect(changeLog.entries.some((entry) => entry.changeType === "created")).toBe(
-      true
-    );
 
-    store.close();
+    expect(dataStatus).toMatchObject({
+      mode: "live",
+      partial: true,
+      sources: [{ status: "timeout" }, { status: "unavailable" }]
+    });
   });
 
-  it("ships extension documentation and an example custom repository", () => {
-    const repoRoot = resolve("../..");
+  it("returns source-aware search/detail results from a readonly repository mode", async () => {
+    const repository = new AsyncMapBenefitRepository();
 
-    expect(existsSync(resolve(repoRoot, "examples/custom-benefit-repository.ts"))).toBe(
-      true
-    );
-    expect(existsSync(resolve(repoRoot, "docs/extending.md"))).toBe(true);
+    expect(repository.mode).toBe("live");
+    await expect(repository.search()).resolves.toMatchObject({
+      records: [expect.objectContaining({ id: arbitraryBenefit.id })],
+      dataStatus: {
+        mode: "live",
+        partial: false,
+        sources: [
+          expect.objectContaining({
+            sourceId: CUSTOM_SOURCE_ID,
+            status: "ok",
+            recordCount: 1
+          })
+        ]
+      }
+    });
+    await expect(repository.getById("missing-benefit")).resolves.toMatchObject({
+      dataStatus: {
+        mode: "live",
+        sources: [expect.objectContaining({ recordCount: 0 })]
+      }
+    });
+  });
+
+  it("serves every benefit read flow through the asynchronous custom repository", async () => {
+    const service = new BenefitToolService(new AsyncMapBenefitRepository(), undefined, {
+      now: () => new Date(NOW),
+      gatewayVersion: "custom-gateway-2"
+    });
+    const profile = {
+      regionCode: "KR-11" as const,
+      ageBand: "twenties" as const,
+      studentStatus: "not_student" as const,
+      employmentStatus: "unemployed" as const,
+      householdType: "single" as const,
+      interests: ["housing" as const]
+    };
+
+    const search = await service.searchBenefits({ query: "서울 청년 월세", profile });
+    const detail = await service.getBenefitDetail({ id: arbitraryBenefit.id });
+    const deadlines = await service.getUpcomingDeadlines({ profile });
+    const checklist = await service.buildChecklist({ benefitId: arbitraryBenefit.id });
+    const guide = await service.getApplicationGuide({ benefitId: arbitraryBenefit.id });
+
+    expect(search).toMatchObject({
+      schemaVersion: "benefit-search.v2",
+      dataStatus: {
+        mode: "live",
+        sources: [expect.objectContaining({ sourceId: CUSTOM_SOURCE_ID })]
+      },
+      results: [
+        expect.objectContaining({
+          id: arbitraryBenefit.id,
+          assessment: expect.objectContaining({ status: "candidate" }),
+          provenance: arbitraryBenefit.provenance,
+          links: arbitraryBenefit.links
+        })
+      ]
+    });
+    expect(detail.result).toMatchObject({
+      id: arbitraryBenefit.id,
+      provenance: arbitraryBenefit.provenance,
+      links: arbitraryBenefit.links
+    });
+    expect(deadlines.results.map((result) => result.id)).toEqual([
+      arbitraryBenefit.id
+    ]);
+    expect(checklist).toMatchObject({
+      items: arbitraryBenefit.documents,
+      caveats: [NON_ELIGIBILITY_DISCLAIMER],
+      provenance: arbitraryBenefit.provenance,
+      links: arbitraryBenefit.links
+    });
+    expect(guide.steps.every((step) => step.requiresUserAction)).toBe(true);
+  });
+
+  it("ships a source-aware v2 JSON-file repository example", () => {
+    const repoRoot = resolve("../..");
+    const examplePath = resolve(repoRoot, "examples/custom-benefit-repository.ts");
+
+    expect(existsSync(examplePath)).toBe(true);
+    const example = readFileSync(examplePath, "utf8");
+    expect(example).toContain("readonly mode");
+    expect(example).toContain("BenefitRepositoryResultSchema");
+    expect(example).toContain("BenefitRepositoryDetailResultSchema");
+    expect(example).toContain("dataStatus");
   });
 });

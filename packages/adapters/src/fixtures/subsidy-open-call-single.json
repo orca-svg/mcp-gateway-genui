@@ -1,0 +1,36 @@
+{
+  "response": {
+    "header": {
+      "resultCode": "00",
+      "resultMsg": "NORMAL SERVICE."
+    },
+    "body": {
+      "numOfRows": "1",
+      "pageNo": "1",
+      "totalCount": "1",
+      "items": {
+        "item": {
+          "BSNSYEAR": "2026",
+          "DTLBZ_ID": "DTL-2026-003",
+          "DTLBZ_NM": "가족 돌봄 지원",
+          "DDTLBZ_ID": "DDTL-2026-003",
+          "DDTLBZ_NM": "가족 돌봄 프로그램",
+          "JRSD_NM": "보건복지부",
+          "SPORT_CN_DC": "가족 돌봄 프로그램 운영을 지원합니다.",
+          "PBLANC_NM": "2026 가족 돌봄 지원 공고",
+          "REQST_RCEPT_MTH_CN": "온라인 접수",
+          "RCEPT_BEGIN_DE": "20260801",
+          "RCEPT_END_DE": "20260831",
+          "RCEPT_PD_DC": "2026-08-01 ~ 2026-08-31",
+          "SPORT_TRGET_CN": "가족 돌봄 기관",
+          "PRESENTN_PAPERS_GUIDANCE_CN": "신청서",
+          "DTLBZ_DDTLBZ_ID": "SUBSIDY-2026-003",
+          "PBLANC_POPUP_URL": "https://www.bojo.go.kr/bojo.do?pbancId=SUBSIDY-2026-003",
+          "STDR_DE": "20260701",
+          "DLVPL_NM": "가족돌봄지원기관",
+          "CTPRVN_NM": "서울"
+        }
+      }
+    }
+  }
+}

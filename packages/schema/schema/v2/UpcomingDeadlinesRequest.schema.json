@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "profile": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "regionCode": {
+          "type": "string",
+          "enum": [
+            "KR-11",
+            "KR-26",
+            "KR-27",
+            "KR-28",
+            "KR-29",
+            "KR-30",
+            "KR-31",
+            "KR-36",
+            "KR-41",
+            "KR-42",
+            "KR-43",
+            "KR-44",
+            "KR-45",
+            "KR-46",
+            "KR-47",
+            "KR-48",
+            "KR-49"
+          ]
+        },
+        "ageBand": {
+          "type": "string",
+          "enum": [
+            "teen",
+            "twenties",
+            "thirties",
+            "forties",
+            "fifties",
+            "sixties_plus"
+          ]
+        },
+        "studentStatus": {
+          "default": "unknown",
+          "type": "string",
+          "enum": [
+            "student",
+            "not_student",
+            "unknown"
+          ]
+        },
+        "employmentStatus": {
+          "default": "unknown",
+          "type": "string",
+          "enum": [
+            "employed",
+            "self_employed",
+            "unemployed",
+            "unknown"
+          ]
+        },
+        "householdType": {
+          "default": "unknown",
+          "type": "string",
+          "enum": [
+            "single",
+            "couple",
+            "family",
+            "single_parent",
+            "unknown"
+          ]
+        },
+        "interests": {
+          "default": [],
+          "maxItems": 8,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "persona": {
+          "type": "string",
+          "enum": [
+            "youth_jobseeker",
+            "university_student",
+            "newlywed_family",
+            "single_parent",
+            "senior",
+            "general"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "withinDays": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365
+    },
+    "weights": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "region": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "age": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "student": {
+          "$ref": "#/$defs/__schema4"
+        },
+        "employment": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "household": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "category": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "query": {
+          "$ref": "#/$defs/__schema8"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Partial per-request overrides. If all effective weights are zero, every ranking score is 0 and candidates use deterministic opaque-ID ordering; assessment is unchanged."
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "enum": [
+        "housing",
+        "education",
+        "employment",
+        "health",
+        "family",
+        "youth",
+        "local",
+        "other"
+      ]
+    },
+    "__schema1": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "__schema2": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "__schema3": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "__schema4": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "__schema5": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "__schema6": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "__schema7": {
+      "$ref": "#/$defs/__schema2"
+    },
+    "__schema8": {
+      "$ref": "#/$defs/__schema2"
+    }
+  },
+  "$id": "urn:mcp-gen-ui:schema:v2:UpcomingDeadlinesRequest"
+}

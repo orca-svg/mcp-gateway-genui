@@ -1,17 +1,13 @@
 import type {
+  EffectiveRecommendationWeights,
+  PersonaPreset as SchemaPersonaPreset,
   RecommendationPersona,
   RecommendationWeights
 } from "@mcp-gen-ui/schema";
 
-export type ResolvedRecommendationWeights = Required<RecommendationWeights>;
-
-export type PersonaPreset<Id extends string = string> = {
-  id: Id;
-  description: string;
-  weights: ResolvedRecommendationWeights;
-};
-
-export type PersonaRegistry<Id extends string = string> = Record<Id, PersonaPreset<Id>>;
+export type ResolvedRecommendationWeights = EffectiveRecommendationWeights;
+export type PersonaPreset = SchemaPersonaPreset;
+export type PersonaRegistry = Partial<Record<RecommendationPersona, PersonaPreset>>;
 
 export const uniformRecommendationWeights: ResolvedRecommendationWeights = {
   region: 1,
@@ -28,13 +24,13 @@ export const uniformRecommendationWeights: ResolvedRecommendationWeights = {
  *
  * These are intentionally small, documented presets rather than hidden policy:
  * embedders can replace the registry to reflect their own audience. `general`
- * preserves the previous uniform-weight default, while the other presets make a
- * single user context more prominent without disabling any score dimension.
+ * preserves the uniform-weight default, while the other presets make a single
+ * coarse user context more prominent in relative ranking only.
  */
 export const defaultPersonaRegistry = {
   youth_jobseeker: {
     id: "youth_jobseeker",
-    description: "Youth job seekers prioritizing employment fit, age fit, and query intent.",
+    description: "Youth job seekers prioritizing employment and age signals plus query intent.",
     weights: {
       ...uniformRecommendationWeights,
       age: 2,
@@ -45,7 +41,7 @@ export const defaultPersonaRegistry = {
   },
   university_student: {
     id: "university_student",
-    description: "University students prioritizing student eligibility, age fit, and benefit category.",
+    description: "University students prioritizing student and age signals plus benefit category.",
     weights: {
       ...uniformRecommendationWeights,
       age: 2,
@@ -55,7 +51,7 @@ export const defaultPersonaRegistry = {
   },
   newlywed_family: {
     id: "newlywed_family",
-    description: "Newlywed families prioritizing household, housing/category, and regional fit.",
+    description: "Newlywed families prioritizing household, housing/category, and regional signals.",
     weights: {
       ...uniformRecommendationWeights,
       region: 2,
@@ -66,7 +62,7 @@ export const defaultPersonaRegistry = {
   },
   single_parent: {
     id: "single_parent",
-    description: "Single-parent households prioritizing household, family/category, region, and employment fit.",
+    description: "Single-parent households prioritizing household, family/category, region, and employment signals.",
     weights: {
       ...uniformRecommendationWeights,
       region: 2,
@@ -77,7 +73,7 @@ export const defaultPersonaRegistry = {
   },
   senior: {
     id: "senior",
-    description: "Seniors prioritizing age fit, local/regional availability, and category fit.",
+    description: "Seniors prioritizing age and regional signals plus benefit category.",
     weights: {
       ...uniformRecommendationWeights,
       region: 1.5,
@@ -90,10 +86,10 @@ export const defaultPersonaRegistry = {
     description: "General-purpose default with uniform weights across all scoring dimensions.",
     weights: { ...uniformRecommendationWeights }
   }
-} satisfies PersonaRegistry<RecommendationPersona>;
+} satisfies Required<PersonaRegistry>;
 
 export function resolveWeights(
-  persona: RecommendationPersona | string | undefined,
+  persona: RecommendationPersona | undefined,
   overrides: RecommendationWeights = {},
   registry: PersonaRegistry = defaultPersonaRegistry
 ): ResolvedRecommendationWeights {
