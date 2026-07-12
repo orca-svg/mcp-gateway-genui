@@ -15,7 +15,7 @@ relative relevance, not probability or legal qualification.
 
 | Source ID | Official API | Request contract | Response contract | Key |
 | --- | --- | --- | --- | --- |
-| `youth-center` | 온통청년 `https://www.youthcenter.go.kr/go/ythip/getPlcy` (data.go.kr dataset 15143273) | `apiKeyNm`, `pageNum`, `pageSize`, `pageType=1`, `rtnType=json` | JSON `result.pagging` + `result.youthPolicyList` | `YOUTH_CENTER_API_KEY` only |
+| `youth-center` | 온통청년 `https://www.youthcenter.go.kr/go/ythip/getPlcy` (data.go.kr dataset 15143273) | `apiKeyNm`, `pageIndex`, `display`, `pageType=1`, `rtnType=json` | JSON `result.pagging` + `result.youthPolicyList` | `YOUTH_CENTER_API_KEY` only |
 | `bokjiro` | 복지로 `https://apis.data.go.kr/B554287/NationalWelfareInformationsV001/NationalWelfarelistV001` | `serviceKey`, `callTp=L`, `pageNo`, `numOfRows`, `srchKeyCode=003` | XML `<wantedList>` with `totalCount`, success `resultCode`, and `servList` | `BOKJIRO_API_KEY` or `DATA_GO_KR_API_KEY` |
 | `subsidy24` (legacy runtime ID) | 기획예산처 `https://apis.data.go.kr/1051000/MoefOpenAPI2025/T_OPD_ASBS_PBNS_UNITY` (data.go.kr dataset 15156853) | `serviceKey`, `pageNo`, `numOfRows`, `resultType=json`, current KST `bsnsyear` | JSON `response.header` + `response.body.totalCount` + `response.body.items.item` | `SUBSIDY24_API_KEY` or `DATA_GO_KR_API_KEY` |
 
@@ -37,10 +37,18 @@ Source observation statuses are exactly `ok`, `partial`, `timeout`,
 source succeeds, source-dependent read tools return the stable
 `all_sources_failed` MCP error.
 
-Current live adapters intentionally request one bounded first page. When the
-declared `totalCount` exceeds the returned item count, the adapter reports
-`status=partial` with `errorCode=page_truncated`; it never labels that page as
-complete source coverage.
+Live adapters expose an explicit bounded traversal policy through `maxPages` and
+`maxRecords`; both default to one page of records, so daily canary probes remain
+deliberately single-page. YouthCenter advances `pageIndex`/`display`; Bokjiro and
+the national-subsidy source advance `pageNo`/`numOfRows`. Every page retains the
+shared per-payload size, retry, caller-abort, and total timeout bounds.
+
+Records are de-duplicated by stable source identity. Coverage is `ok` only when
+the validated pages agree on `totalCount` and yield that many unique identities.
+A cap, repeated/empty/mismatched page, changed total, or later transport/payload
+failure returns the records collected so far with `status=partial`. The default
+single-page result therefore retains healthy `errorCode=page_truncated`
+semantics whenever more upstream records exist.
 
 ## Attribution and license notes
 
