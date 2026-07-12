@@ -199,7 +199,8 @@ describe("YouthCenterRepository", () => {
     expect(requestedUrl.origin).toBe("https://www.youthcenter.go.kr");
     expect(requestedUrl.pathname).toBe("/go/ythip/getPlcy");
     expect(requestedUrl.searchParams.get("apiKeyNm")).toBe("runtime-key-only");
-    expect(requestedUrl.searchParams.get("pageNum")).toBe("1");
+    expect(requestedUrl.searchParams.get("pageIndex")).toBe("1");
+    expect(requestedUrl.searchParams.get("display")).toBe("100");
     expect(requestedUrl.searchParams.get("pageType")).toBe("1");
     expect(requestedUrl.searchParams.get("rtnType")).toBe("json");
     expect(requestedUrl.searchParams.get("serviceKey")).toBeNull();
@@ -266,6 +267,90 @@ describe("YouthCenterRepository", () => {
         errorCode: "page_truncated",
         recordCount: 1
       }
+    });
+  });
+
+  it("advances pages and de-duplicates overlapping source identities", async () => {
+    const first = deepClone(youthCenterPayload);
+    const second = deepClone(youthCenterPayload);
+    const firstResult = first.result as { pagging: { totCount: number } };
+    const secondResult = second.result as { pagging: { totCount: number; pageNum: number }; youthPolicyList: Record<string, unknown>[] };
+    firstResult.pagging.totCount = 2;
+    secondResult.pagging.totCount = 2;
+    secondResult.pagging.pageNum = 2;
+    const secondItem = deepClone(secondResult.youthPolicyList[0]!);
+    secondItem.plcyNo = "R202607100002";
+    secondItem.plcyNm = "두 번째 정책";
+    secondResult.youthPolicyList.push(secondItem);
+    const urls: URL[] = [];
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(String(input));
+      urls.push(url);
+      return jsonResponse(url.searchParams.get("pageIndex") === "1" ? first : second);
+    });
+    const repository = new YouthCenterRepository({
+      apiKey: "key",
+      fetch: fetch as typeof globalThis.fetch,
+      maxPages: 3,
+      maxRecords: 10,
+      now: () => FIXED_NOW
+    });
+
+    const response = await repository.search();
+
+    expect(urls.map((url) => url.searchParams.get("pageIndex"))).toEqual(["1", "2"]);
+    expect(response.observation).toMatchObject({ status: "ok", recordCount: 2 });
+    expect(response.records.map((record) => record.sourceRecordId)).toEqual([
+      "R202607100001",
+      "R202607100002"
+    ]);
+  });
+
+  it("keeps earlier records when a later page is malformed", async () => {
+    const first = deepClone(youthCenterPayload);
+    (first.result as { pagging: { totCount: number } }).pagging.totCount = 2;
+    let calls = 0;
+    const repository = new YouthCenterRepository({
+      apiKey: "key",
+      fetch: async () => (++calls === 1 ? jsonResponse(first) : jsonResponse({ malformed: true })),
+      maxPages: 2,
+      maxRecords: 10,
+      now: () => FIXED_NOW
+    });
+
+    await expect(repository.search()).resolves.toMatchObject({
+      records: [{ sourceRecordId: "R202607100001" }],
+      observation: { status: "partial", errorCode: "invalid_payload", recordCount: 1 }
+    });
+  });
+
+  it.each([
+    ["repeated_page", (payload: Record<string, unknown>) => payload],
+    ["empty_page", (payload: Record<string, unknown>) => {
+      (payload.result as { youthPolicyList: unknown[] }).youthPolicyList = [];
+      return payload;
+    }],
+    ["total_count_drift", (payload: Record<string, unknown>) => {
+      (payload.result as { pagging: { totCount: number } }).pagging.totCount = 3;
+      return payload;
+    }]
+  ])("reports %s as partial coverage", async (errorCode, mutateSecond) => {
+    const first = deepClone(youthCenterPayload);
+    (first.result as { pagging: { totCount: number } }).pagging.totCount = 2;
+    const second = mutateSecond(deepClone(first));
+    ((second.result as Record<string, unknown>).pagging as Record<string, unknown>).pageNum = 2;
+    let calls = 0;
+    const repository = new YouthCenterRepository({
+      apiKey: "key",
+      fetch: async () => jsonResponse(++calls === 1 ? first : second),
+      maxPages: 2,
+      maxRecords: 10,
+      now: () => FIXED_NOW
+    });
+
+    await expect(repository.search()).resolves.toMatchObject({
+      records: [{ sourceRecordId: "R202607100001" }],
+      observation: { status: "partial", errorCode }
     });
   });
 

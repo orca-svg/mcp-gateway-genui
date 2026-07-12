@@ -72,6 +72,14 @@ allowed only when both `complete=true` and observation status is `ok`.
 Partial/failed syncs never delete data. `getChangeLog` is a paginated read of
 this explicit history.
 
+The built-in live adapters accept `maxPages` and `maxRecords`. Defaults are
+single-page for bounded reads and canaries; scheduled ingestion may opt into
+larger finite values. Completion requires a stable `totalCount`, advancing page
+contract, and the expected number of unique source identities. Never pass
+`complete=true` when the adapter observation is partial (including cap,
+duplicate/repeated page, empty page, timeout, abort, or malformed later-page
+results); the ingestion service also enforces this before allowing deletions.
+
 ## Assessment and ranking rules
 
 Assessment and ranking are separate APIs. Each structured constraint declares

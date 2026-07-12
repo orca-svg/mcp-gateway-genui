@@ -238,6 +238,10 @@ interface PublicBenefitAdapterOptions {
   maxRetries?: number;
   maxPayloadBytes?: number;
   retryDelayMs?: number;
+  /** Hard page bound. The single-page default keeps canary probes deliberately bounded. */
+  maxPages?: number;
+  /** Hard unique-record bound. Defaults to pageSize. */
+  maxRecords?: number;
   linkStaleAfterDays?: number;
 }
 
@@ -253,6 +257,7 @@ interface TextHit {
 interface ParsedSourcePayload {
   items: SourceItem[];
   totalCount: number;
+  pageNumber?: number;
 }
 
 interface SourceMapping {
@@ -293,7 +298,8 @@ interface SourceMapping {
   queryParams: (
     apiKey: string,
     pageSize: number,
-    currentDate: Date
+    currentDate: Date,
+    pageNumber: number
   ) => Record<string, string>;
   parsePayload: (body: string) => ParsedSourcePayload;
 }
@@ -352,10 +358,10 @@ const YOUTH_CENTER_MAPPING: SourceMapping = {
   },
   fallbackSourceUrl: (id) =>
     `${YOUTH_CENTER_ORIGIN}/youthPolicy/ythPlcyTotalSearch/ythPlcyDetail/${encodeURIComponent(id)}`,
-  queryParams: (apiKey, pageSize) => ({
+  queryParams: (apiKey, pageSize, _currentDate, pageNumber) => ({
     apiKeyNm: apiKey,
-    pageNum: "1",
-    pageSize: String(pageSize),
+    pageIndex: String(pageNumber),
+    display: String(pageSize),
     pageType: "1",
     rtnType: "json"
   }),
@@ -400,10 +406,10 @@ const BOKJIRO_MAPPING: SourceMapping = {
     apply: ["https://www.bokjiro.go.kr"]
   },
   fallbackSourceUrl: () => "https://www.data.go.kr/data/15090532/openapi.do",
-  queryParams: (apiKey, pageSize) => ({
+  queryParams: (apiKey, pageSize, _currentDate, pageNumber) => ({
     serviceKey: apiKey,
     callTp: "L",
-    pageNo: "1",
+    pageNo: String(pageNumber),
     numOfRows: String(pageSize),
     srchKeyCode: "003"
   }),
@@ -464,9 +470,9 @@ const SUBSIDY_MAPPING: SourceMapping = {
     apply: ["https://www.bojo.go.kr"]
   },
   fallbackSourceUrl: () => "https://www.data.go.kr/data/15156853/openapi.do",
-  queryParams: (apiKey, pageSize, currentDate) => ({
+  queryParams: (apiKey, pageSize, currentDate, pageNumber) => ({
     serviceKey: apiKey,
-    pageNo: "1",
+    pageNo: String(pageNumber),
     numOfRows: String(pageSize),
     resultType: "json",
     bsnsyear: String(koreaCalendarYear(currentDate))
@@ -488,6 +494,8 @@ abstract class PublicBenefitApiAdapter implements BenefitSourceAdapter {
   private readonly maxRetries?: number;
   private readonly retryDelayMs?: number;
   private readonly maxPayloadBytes?: number;
+  private readonly maxPages: number;
+  private readonly maxRecords: number;
   private readonly linkStaleAfterDays: number;
 
   protected constructor(
@@ -505,6 +513,8 @@ abstract class PublicBenefitApiAdapter implements BenefitSourceAdapter {
     this.maxRetries = options.maxRetries;
     this.retryDelayMs = options.retryDelayMs;
     this.maxPayloadBytes = options.maxPayloadBytes;
+    this.maxPages = options.maxPages ?? 1;
+    this.maxRecords = options.maxRecords ?? this.pageSize * this.maxPages;
     this.linkStaleAfterDays =
       options.linkStaleAfterDays ?? DEFAULT_LINK_STALE_AFTER_DAYS;
   }
@@ -529,91 +539,142 @@ abstract class PublicBenefitApiAdapter implements BenefitSourceAdapter {
       !Number.isSafeInteger(this.pageSize) ||
       this.pageSize < 1 ||
       this.pageSize > this.mapping.maximumPageSize ||
+      !Number.isSafeInteger(this.maxPages) ||
+      this.maxPages < 1 ||
+      !Number.isSafeInteger(this.maxRecords) ||
+      this.maxRecords < 1 ||
       !Number.isSafeInteger(this.linkStaleAfterDays) ||
       this.linkStaleAfterDays < 1
     ) {
       return this.failure(retrievedAt, "unavailable", "invalid_configuration");
     }
 
-    try {
-      let endpoint: URL;
-      try {
-        endpoint = new URL(this.endpoint);
-      } catch {
-        throw new AdapterTransportError("invalid_configuration");
-      }
-      for (const [name, value] of Object.entries(
-        this.mapping.queryParams(this.apiKey, this.pageSize, currentDate)
-      )) {
-        endpoint.searchParams.set(name, value);
-      }
+    const records: BenefitRecord[] = [];
+    const seenSourceIds = new Set<string>();
+    let expectedTotal: number | undefined;
+    let rejectedCount = 0;
+    let lastRetrievedAt = retrievedAt;
+    const startedAt = Date.now();
 
-      const response = await fetchAdapterResource({
-        endpoint,
-        allowedOrigins: this.mapping.requestOrigins,
-        allowedContentTypes: this.mapping.responseContentTypes,
-        signal: options.signal,
-        timeoutMs: this.timeoutMs,
-        maxRetries: this.maxRetries,
-        retryDelayMs: this.retryDelayMs,
-        maxPayloadBytes: this.maxPayloadBytes,
-        fetch: this.fetchImpl,
-        now: () => currentDate,
-        headers: {
-          Accept: this.mapping.responseContentTypes.join(", ")
+    const result = (errorCode?: string): AdapterResult =>
+      AdapterResultSchema.parse({
+        records,
+        observation: {
+          sourceId: this.sourceId,
+          status: errorCode ? "partial" : "ok",
+          retrievedAt: lastRetrievedAt,
+          recordCount: records.length,
+          errorCode,
+          adapterVersion: this.adapterVersion
         }
       });
 
-      const payload = this.mapping.parsePayload(response.body);
-      const items = payload.items;
-      const records = items
-        .map((item) =>
-          toBenefitRecord(
+    for (let pageNumber = 1; pageNumber <= this.maxPages; pageNumber += 1) {
+      try {
+        let endpoint: URL;
+        try {
+          endpoint = new URL(this.endpoint);
+        } catch {
+          throw new AdapterTransportError("invalid_configuration");
+        }
+        for (const [name, value] of Object.entries(
+          this.mapping.queryParams(this.apiKey, this.pageSize, currentDate, pageNumber)
+        )) {
+          endpoint.searchParams.set(name, value);
+        }
+
+        const elapsedMs = Date.now() - startedAt;
+        const remainingTimeoutMs =
+          this.timeoutMs === undefined ? undefined : this.timeoutMs - elapsedMs;
+        if (remainingTimeoutMs !== undefined && remainingTimeoutMs <= 0) {
+          throw new AdapterTransportError("timeout");
+        }
+
+        const response = await fetchAdapterResource({
+          endpoint,
+          allowedOrigins: this.mapping.requestOrigins,
+          allowedContentTypes: this.mapping.responseContentTypes,
+          signal: options.signal,
+          timeoutMs: remainingTimeoutMs,
+          maxRetries: this.maxRetries,
+          retryDelayMs: this.retryDelayMs,
+          maxPayloadBytes: this.maxPayloadBytes,
+          fetch: this.fetchImpl,
+          now: () => currentDate,
+          headers: { Accept: this.mapping.responseContentTypes.join(", ") }
+        });
+        lastRetrievedAt = response.retrievedAt;
+
+        const payload = this.mapping.parsePayload(response.body);
+        if (payload.pageNumber !== undefined && payload.pageNumber !== pageNumber) {
+          return result("page_drift");
+        }
+        if (expectedTotal === undefined) expectedTotal = payload.totalCount;
+        else if (payload.totalCount !== expectedTotal) return result("total_count_drift");
+
+        if (payload.items.length === 0 && seenSourceIds.size < expectedTotal) {
+          if (seenSourceIds.size === 0) {
+            return this.failure(lastRetrievedAt, "invalid_payload", "invalid_payload");
+          }
+          return result("empty_page");
+        }
+
+        let addedOnPage = 0;
+        for (const item of payload.items) {
+          const id = firstTextHit(item, this.mapping.idFields)?.value;
+          const stableId = id && normalizedText(id, 256);
+          if (!stableId) {
+            rejectedCount += 1;
+            continue;
+          }
+          if (seenSourceIds.has(stableId)) continue;
+          if (seenSourceIds.size >= this.maxRecords) return result("max_records_reached");
+          seenSourceIds.add(stableId);
+          addedOnPage += 1;
+          const record = toBenefitRecord(
             item,
             this.mapping,
             response.retrievedAt,
             currentDate,
             this.linkStaleAfterDays
-          )
-        )
-        .filter((record): record is BenefitRecord => record !== undefined);
-      const rejectedCount = items.length - records.length;
-      const pageTruncated = payload.totalCount > items.length;
-
-      if (items.length > 0 && records.length === 0) {
-        return this.failure(response.retrievedAt, "invalid_payload", "invalid_record");
-      }
-
-      const partialErrorCode =
-        pageTruncated && rejectedCount > 0
-          ? "page_truncated.invalid_record"
-          : pageTruncated
-            ? "page_truncated"
-            : rejectedCount > 0
-              ? "invalid_record"
-              : undefined;
-
-      return AdapterResultSchema.parse({
-        records,
-        observation: {
-          sourceId: this.sourceId,
-          status: partialErrorCode ? "partial" : "ok",
-          retrievedAt: response.retrievedAt,
-          recordCount: records.length,
-          errorCode: partialErrorCode,
-          adapterVersion: this.adapterVersion
+          );
+          if (record) records.push(record);
+          else rejectedCount += 1;
         }
-      });
-    } catch (error) {
-      if (error instanceof AdapterTransportError) {
-        const status = transportObservationStatus(error.code);
-        return this.failure(retrievedAt, status, error.code);
+
+        if (payload.items.length > 0 && addedOnPage === 0 && seenSourceIds.size < expectedTotal) {
+          return result("repeated_page");
+        }
+        if (records.length === 0 && seenSourceIds.size > 0) {
+          return this.failure(lastRetrievedAt, "invalid_payload", "invalid_record");
+        }
+        if (seenSourceIds.size >= expectedTotal) {
+          return result(rejectedCount > 0 ? "invalid_record" : undefined);
+        }
+        if (pageNumber === this.maxPages) {
+          const code = rejectedCount > 0 ? "page_truncated.invalid_record" : "page_truncated";
+          return result(code);
+        }
+      } catch (error) {
+        const code =
+          error instanceof AdapterTransportError
+            ? error.code
+            : error instanceof UpstreamResponseError
+              ? "upstream_error"
+              : "invalid_payload";
+        if (records.length > 0) return result(code);
+        if (error instanceof AdapterTransportError) {
+          return this.failure(retrievedAt, transportObservationStatus(error.code), error.code);
+        }
+        return this.failure(
+          retrievedAt,
+          error instanceof UpstreamResponseError ? "unavailable" : "invalid_payload",
+          code
+        );
       }
-      if (error instanceof UpstreamResponseError) {
-        return this.failure(retrievedAt, "unavailable", "upstream_error");
-      }
-      return this.failure(retrievedAt, "invalid_payload", "invalid_payload");
     }
+
+    return result("page_truncated");
   }
 
   private failure(
@@ -665,7 +726,10 @@ function parseYouthCenterPayload(body: string): ParsedSourcePayload {
     if (totalCount === 0) return { items: [], totalCount };
     throw new InvalidSourcePayloadError();
   }
-  return checkedSourcePayload(recordArray(items), totalCount);
+  return {
+    ...checkedSourcePayload(recordArray(items), totalCount),
+    pageNumber: optionalPageNumber(paging?.pageIndex ?? paging?.pageNum)
+  };
 }
 
 function parseBokjiroPayload(body: string): ParsedSourcePayload {
@@ -699,7 +763,10 @@ function parseBokjiroPayload(body: string): ParsedSourcePayload {
     if (totalCount === 0) return { items: [], totalCount };
     throw new InvalidSourcePayloadError();
   }
-  return checkedSourcePayload(recordArray(wantedList.servList), totalCount);
+  return {
+    ...checkedSourcePayload(recordArray(wantedList.servList), totalCount),
+    pageNumber: optionalPageNumber(wantedList.pageNo)
+  };
 }
 
 function parseSubsidyPayload(body: string): ParsedSourcePayload {
@@ -719,7 +786,10 @@ function parseSubsidyPayload(body: string): ParsedSourcePayload {
     if (totalCount === 0) return { items: [], totalCount };
     throw new InvalidSourcePayloadError();
   }
-  return checkedSourcePayload(recordArray(items), totalCount);
+  return {
+    ...checkedSourcePayload(recordArray(items), totalCount),
+    pageNumber: optionalPageNumber(payloadBody.pageNo)
+  };
 }
 
 function toBenefitRecord(
@@ -1431,6 +1501,17 @@ function recordArray(value: unknown): SourceItem[] {
   throw new InvalidSourcePayloadError();
 }
 
+function optionalPageNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const raw = textValue(value);
+  if (!raw || !/^\d+$/u.test(raw)) throw new InvalidSourcePayloadError();
+  const pageNumber = Number(raw);
+  if (!Number.isSafeInteger(pageNumber) || pageNumber < 1) {
+    throw new InvalidSourcePayloadError();
+  }
+  return pageNumber;
+}
+
 function requiredTotalCount(value: unknown): number {
   const raw = textValue(value);
   if (!raw || !/^\d+$/u.test(raw)) throw new InvalidSourcePayloadError();
@@ -1445,7 +1526,7 @@ function checkedSourcePayload(
   items: SourceItem[],
   totalCount: number
 ): ParsedSourcePayload {
-  if (items.length > totalCount || (totalCount > 0 && items.length === 0)) {
+  if (items.length > totalCount) {
     throw new InvalidSourcePayloadError();
   }
   return { items, totalCount };
